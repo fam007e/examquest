@@ -50,6 +50,20 @@ python o_and_a_lv_qp_sdl.py
 
 Please be respectful of the Xtremepapers website and avoid overloading their servers with too many requests in a short time.
 
+## Merging Papers
+
+After downloading the papers, you can run the `pdfmerger.sh` script to merge the papers by type using `poppler` utility package `pdfunite`:
+
+```bash
+bash pdfmerger.sh
+```
+
+The script will:
+
+- Find and merge the papers (question papers, mark schemes, etc.) for each paper type (e.g., `qp_1`, `qp_2`, etc.) into single PDFs.
+- Save the merged PDFs in the `merged` directory.
+- Organize the downloaded papers into folders by examination level, subject, and paper type (`ms` for mark schemes, `qp` for question papers, and `misc` for other types).
+
 ## License
 
 This project is open source and available under the [LICENSE](LICENSE).
