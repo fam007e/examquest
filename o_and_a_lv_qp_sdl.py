@@ -11,8 +11,8 @@ from bs4 import BeautifulSoup
 
 BASE_URL = 'https://papers.xtremepape.rs/'
 HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                 'Chrome/91.0.4472.124 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)'
+                  ' Chrome/91.0.4472.124 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
     'Accept-Language': 'en-US,en;q=0.5',
     'Connection': 'keep-alive',
@@ -85,42 +85,34 @@ def get_papacambridge_subjects(exam_level):
         'AS+and+A+Level': 'as-and-a-level',
         'IGCSE': 'igcse'
     }
-    
     url = f'{base_pc_url}{level_map[exam_level]}'
     try:
         response = requests.get(url, headers=HEADERS, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        
         subjects = {}
         # Find all subject divs
         subject_items = soup.find_all('div', class_='kt-widget4__item item-folder-type')
-        
         for item in subject_items:
             # Skip advertisement divs
             if 'adsbygoogle' in item.get('class', []):
                 continue
-                
             link = item.find('a')
             if not link:
                 continue
-                
             # Get the subject name from the span with class 'wraptext'
             subject_span = link.find('span', class_='wraptext')
             if not subject_span:
                 continue
-                
             subject_name = subject_span.text.strip()
             # Skip empty or parent directory entries
             if not subject_name or subject_name == '..':
                 continue
-                
             # Get the href link
             subject_url = link['href']
             if not subject_url.startswith('http'):
                 subject_url = 'https://pastpapers.papacambridge.com/' + subject_url
             subjects[subject_name] = subject_url
-                    
         return subjects
     except requests.RequestException as e:
         print(f"Error fetching subjects: {e}")
@@ -178,33 +170,32 @@ def get_papacambridge_years(subject_url):
         response = requests.get(subject_url, headers=HEADERS, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        
         years = {}
         year_items = soup.find_all('div', class_='kt-widget4__item item-folder-type')
-        
         for item in year_items:
             # Skip advertisement divs
             if 'adsbygoogle' in item.get('class', []):
                 continue
-                
             link = item.find('a')
             if not link:
                 continue
-                
             year_span = link.find('span', class_='wraptext')
             if not year_span:
                 continue
-                
             year_name = year_span.text.strip()
             # Skip special folders
-            if not year_name or year_name == '..' or 'Solved Past Papers' in year_name or 'Topical Past Papers' in year_name:
+            skip_conditions = [
+                not year_name,
+                year_name == '..',
+                'Solved Past Papers' in year_name,
+                'Topical Past Papers' in year_name
+            ]
+            if any(skip_conditions):
                 continue
-                
             year_url = link['href']
             if not year_url.startswith('http'):
                 year_url = 'https://pastpapers.papacambridge.com/' + year_url
             years[year_name] = year_url
-                    
         return years
     except requests.RequestException as e:
         print(f"Error fetching years: {e}")
@@ -217,11 +208,9 @@ def get_papacambridge_pdfs(subject_url):
         response = requests.get(subject_url, headers=HEADERS, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        
         # Check if this page has folders (years/sessions) or PDF files
         folders = soup.find_all('div', class_='kt-widget4__item item-folder-type')
         pdf_items = soup.find_all('div', class_='kt-widget4__item item-pdf-type')
-        
         if folders and not pdf_items:
             # This is a subject page, get years and then pdfs for each year
             all_pdfs = {}
@@ -232,10 +221,8 @@ def get_papacambridge_pdfs(subject_url):
                 all_pdfs.update(year_pdfs)
                 time.sleep(0.5)  # Be nice to the server
             return all_pdfs
-        
         # This is already a session page with PDFs
         return get_papacambridge_session_pdfs(subject_url)
-            
     except requests.RequestException as e:
         print(f"Error processing subject: {e}")
         return {}
@@ -247,10 +234,8 @@ def get_papacambridge_session_pdfs(session_url):
         response = requests.get(session_url, headers=HEADERS, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        
         # Find all PDF items
         pdf_items = soup.find_all('div', class_='kt-widget4__item item-pdf-type')
-        
         for item in pdf_items:
             # Find the download link
             download_link = item.find('a', href=re.compile(r'download_file\.php\?files=.*\.pdf'))
@@ -259,13 +244,10 @@ def get_papacambridge_session_pdfs(session_url):
                 match = re.search(r'files=(.*\.pdf)', download_link['href'])
                 if match:
                     pdf_url = match.group(1)
-                    
                     # Extract the actual filename from the URL
                     filename = os.path.basename(pdf_url)
-                    
                     # Use the direct PDF URL, not the download_file.php URL
                     pdfs[filename] = pdf_url
-        
         return pdfs
     except requests.RequestException as e:
         print(f"Error fetching PDFs from session: {e}")
@@ -279,24 +261,18 @@ def download_pdf(url, filename, subject_dir, exam_board, source):
             response = requests.get(url, headers=HEADERS, stream=True, timeout=10)
         else:
             response = requests.get(url, timeout=10)
-            
         response.raise_for_status()
         subdir = categorize_pdf(filename, exam_board)
-
         dir_path = os.path.join(subject_dir, subdir)
         os.makedirs(dir_path, exist_ok=True)
-
         file_path = os.path.join(dir_path, filename)
-        
         # Use streaming for better performance with large files
         with open(file_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:  # filter out keep-alive new chunks
                     f.write(chunk)
-                
         print(f"Downloaded: {filename}")
         return True
-        
     except requests.RequestException as e:
         print(f"Error downloading {filename}: {e}")
         return False
@@ -329,6 +305,12 @@ def print_subjects_in_columns(subjects):
 
 def main():
     """Main function to run the script."""
+    # Split function to reduce local variables
+    exam_info = get_exam_info()
+    process_subjects(exam_info)
+
+def get_exam_info():
+    """Get exam board, source and level information."""
     exam_board, source = get_exam_board()
     exam_level = get_exam_level(exam_board)
     
@@ -339,8 +321,25 @@ def main():
 
     if not subjects:
         print("No subjects found. Exiting...")
-        return
+        return None
+    
+    return {
+        'exam_board': exam_board,
+        'source': source,
+        'exam_level': exam_level,
+        'subjects': subjects
+    }
 
+def process_subjects(exam_info):
+    """Process selected subjects and download papers."""
+    if not exam_info:
+        return
+    
+    exam_board = exam_info['exam_board']
+    source = exam_info['source']
+    exam_level = exam_info['exam_level']
+    subjects = exam_info['subjects']
+    
     print(f"\nAvailable subjects for {exam_board} {exam_level.replace('+', ' ')}:")
     print_subjects_in_columns(subjects)
 
@@ -356,7 +355,7 @@ def main():
         if index < 1 or index > len(selected_subjects):
             print(f"Invalid subject number: {index}")
             continue
-            
+        
         subject = selected_subjects[index - 1]
         subject_url = subjects[subject]
         print(f"\nProcessing {subject}...")
@@ -365,14 +364,14 @@ def main():
             pdfs = get_pdfs(subject_url, exam_board)
         else:  # papacambridge
             pdfs = get_papacambridge_pdfs(subject_url)
-            
+        
         if not pdfs:
             print(f"No PDFs found for {subject}")
             continue
-            
-        # For both sources, use the same structure with just CAIE as the base directory
+        
+        # For both sources, use the same structure
         subject_dir = os.path.join(
-            exam_board,  # Use CAIE for both sources
+            exam_board,
             exam_level.replace('+', ' '),
             subject.replace('/', '_').replace('&', 'and')
         )
@@ -387,8 +386,9 @@ def main():
                 successful_downloads += 1
             # Add a small delay to avoid overwhelming the server
             time.sleep(0.5)
-            
-        print(f"\nCompleted {subject}: {successful_downloads} out of {total_pdfs} files downloaded successfully")
+        
+        print(f"\nCompleted {subject}: {successful_downloads} out of {total_pdfs} "
+              f"files downloaded successfully")
 
 if __name__ == "__main__":
     try:

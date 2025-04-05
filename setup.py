@@ -37,6 +37,6 @@ setup(
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Utilities',
     ],
-    keywords='education, exams, cambridge, edexcel, igcse, a-level, o-level, papacambridge, xtremepapers',
+    keywords='education, exams, cambridge, edexcel, igcse, a-level, papacambridge, xtremepapers',
     python_requires='>=3.6',
 )
