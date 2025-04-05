@@ -307,7 +307,7 @@ def get_exam_info():
     """Get exam board, source and level information."""
     exam_board, source = get_exam_board()
     exam_level = get_exam_level(exam_board)
-    
+
     if source == 'xtremepapers':
         subjects = get_subjects(exam_board, exam_level)
     else:  # papacambridge
