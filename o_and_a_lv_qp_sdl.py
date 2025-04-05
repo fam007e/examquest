@@ -303,12 +303,6 @@ def print_subjects_in_columns(subjects):
         row = subject_list[i:i + num_columns]
         print("  ".join(item.ljust(max_width) for item in row))
 
-def main():
-    """Main function to run the script."""
-    # Split function to reduce local variables
-    exam_info = get_exam_info()
-    process_subjects(exam_info)
-
 def get_exam_info():
     """Get exam board, source and level information."""
     exam_board, source = get_exam_board()
@@ -322,7 +316,7 @@ def get_exam_info():
     if not subjects:
         print("No subjects found. Exiting...")
         return None
-    
+
     return {
         'exam_board': exam_board,
         'source': source,
@@ -330,16 +324,31 @@ def get_exam_info():
         'subjects': subjects
     }
 
+def download_selected_pdfs(subject, pdfs, subject_dir, exam_board, source):
+    """Download PDFs for a selected subject."""
+    successful_downloads = 0
+    total_pdfs = len(pdfs)
+
+    for filename, pdf_url in pdfs.items():
+        if download_pdf(pdf_url, filename, subject_dir, exam_board, source):
+            successful_downloads += 1
+        # Add a small delay to avoid overwhelming the server
+        time.sleep(0.5)
+
+    print(f"\nCompleted {subject}: {successful_downloads} out of {total_pdfs} "
+          f"files downloaded successfully")
+    return successful_downloads
+
 def process_subjects(exam_info):
     """Process selected subjects and download papers."""
     if not exam_info:
         return
-    
+
     exam_board = exam_info['exam_board']
     source = exam_info['source']
     exam_level = exam_info['exam_level']
     subjects = exam_info['subjects']
-    
+
     print(f"\nAvailable subjects for {exam_board} {exam_level.replace('+', ' ')}:")
     print_subjects_in_columns(subjects)
 
@@ -355,7 +364,7 @@ def process_subjects(exam_info):
         if index < 1 or index > len(selected_subjects):
             print(f"Invalid subject number: {index}")
             continue
-        
+
         subject = selected_subjects[index - 1]
         subject_url = subjects[subject]
         print(f"\nProcessing {subject}...")
@@ -364,31 +373,26 @@ def process_subjects(exam_info):
             pdfs = get_pdfs(subject_url, exam_board)
         else:  # papacambridge
             pdfs = get_papacambridge_pdfs(subject_url)
-        
+
         if not pdfs:
             print(f"No PDFs found for {subject}")
             continue
-        
+
         # For both sources, use the same structure
         subject_dir = os.path.join(
             exam_board,
             exam_level.replace('+', ' '),
             subject.replace('/', '_').replace('&', 'and')
         )
-        
-        os.makedirs(subject_dir, exist_ok=True)
 
-        successful_downloads = 0
-        total_pdfs = len(pdfs)
-        
-        for filename, pdf_url in pdfs.items():
-            if download_pdf(pdf_url, filename, subject_dir, exam_board, source):
-                successful_downloads += 1
-            # Add a small delay to avoid overwhelming the server
-            time.sleep(0.5)
-        
-        print(f"\nCompleted {subject}: {successful_downloads} out of {total_pdfs} "
-              f"files downloaded successfully")
+        os.makedirs(subject_dir, exist_ok=True)
+        download_selected_pdfs(subject, pdfs, subject_dir, exam_board, source)
+
+def main():
+    """Main function to run the script."""
+    # Split function to reduce local variables
+    exam_info = get_exam_info()
+    process_subjects(exam_info)
 
 if __name__ == "__main__":
     try:
