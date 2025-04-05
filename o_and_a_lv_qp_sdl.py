@@ -1,6 +1,6 @@
 """
 This script downloads exam papers and mark schemes from xtremepapers and papacambridge websites
-for CAIE and Edexcel boards and organizes them into directories based on the 
+for CAIE and Edexcel boards and organizes them into directories based on the
 exam board and subject.
 """
 import os
@@ -11,7 +11,8 @@ from bs4 import BeautifulSoup
 
 BASE_URL = 'https://papers.xtremepape.rs/'
 HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                 'Chrome/91.0.4472.124 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
     'Accept-Language': 'en-US,en;q=0.5',
     'Connection': 'keep-alive',
@@ -78,14 +79,14 @@ def get_subjects(exam_board, exam_level):
 
 def get_papacambridge_subjects(exam_level):
     """Fetch subjects from papacambridge."""
-    BASE_PC_URL = 'https://pastpapers.papacambridge.com/papers/caie/'
+    base_pc_url = 'https://pastpapers.papacambridge.com/papers/caie/'
     level_map = {
         'O+Level': 'o-level',
         'AS+and+A+Level': 'as-and-a-level',
         'IGCSE': 'igcse'
     }
     
-    url = f'{BASE_PC_URL}{level_map[exam_level]}'
+    url = f'{base_pc_url}{level_map[exam_level]}'
     try:
         response = requests.get(url, headers=HEADERS, timeout=10)
         response.raise_for_status()
@@ -101,18 +102,24 @@ def get_papacambridge_subjects(exam_level):
                 continue
                 
             link = item.find('a')
-            if link:
-                # Get the subject name from the span with class 'wraptext'
-                subject_span = link.find('span', class_='wraptext')
-                if subject_span:
-                    subject_name = subject_span.text.strip()
-                    # Skip empty or parent directory entries
-                    if subject_name and subject_name != '..':
-                        # Get the href link
-                        subject_url = link['href']
-                        if not subject_url.startswith('http'):
-                            subject_url = 'https://pastpapers.papacambridge.com/' + subject_url
-                        subjects[subject_name] = subject_url
+            if not link:
+                continue
+                
+            # Get the subject name from the span with class 'wraptext'
+            subject_span = link.find('span', class_='wraptext')
+            if not subject_span:
+                continue
+                
+            subject_name = subject_span.text.strip()
+            # Skip empty or parent directory entries
+            if not subject_name or subject_name == '..':
+                continue
+                
+            # Get the href link
+            subject_url = link['href']
+            if not subject_url.startswith('http'):
+                subject_url = 'https://pastpapers.papacambridge.com/' + subject_url
+            subjects[subject_name] = subject_url
                     
         return subjects
     except requests.RequestException as e:
@@ -181,19 +188,22 @@ def get_papacambridge_years(subject_url):
                 continue
                 
             link = item.find('a')
-            if link:
-                year_span = link.find('span', class_='wraptext')
-                if year_span:
-                    year_name = year_span.text.strip()
-                    # Skip special folders
-                    if (year_name and 
-                        year_name != '..' and 
-                        'Solved Past Papers' not in year_name and
-                        'Topical Past Papers' not in year_name):
-                        year_url = link['href']
-                        if not year_url.startswith('http'):
-                            year_url = 'https://pastpapers.papacambridge.com/' + year_url
-                        years[year_name] = year_url
+            if not link:
+                continue
+                
+            year_span = link.find('span', class_='wraptext')
+            if not year_span:
+                continue
+                
+            year_name = year_span.text.strip()
+            # Skip special folders
+            if not year_name or year_name == '..' or 'Solved Past Papers' in year_name or 'Topical Past Papers' in year_name:
+                continue
+                
+            year_url = link['href']
+            if not year_url.startswith('http'):
+                year_url = 'https://pastpapers.papacambridge.com/' + year_url
+            years[year_name] = year_url
                     
         return years
     except requests.RequestException as e:
@@ -222,9 +232,9 @@ def get_papacambridge_pdfs(subject_url):
                 all_pdfs.update(year_pdfs)
                 time.sleep(0.5)  # Be nice to the server
             return all_pdfs
-        else:
-            # This is already a session page with PDFs
-            return get_papacambridge_session_pdfs(subject_url)
+        
+        # This is already a session page with PDFs
+        return get_papacambridge_session_pdfs(subject_url)
             
     except requests.RequestException as e:
         print(f"Error processing subject: {e}")
@@ -385,5 +395,5 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print("\nProcess interrupted by user. Exiting...")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"\nAn unexpected error occurred: {e}")
