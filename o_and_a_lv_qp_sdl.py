@@ -1,47 +1,65 @@
 """
-This script downloads exam papers and mark schemes from the xtremepapers' website
+This script downloads exam papers and mark schemes from xtremepapers and papacambridge websites
 for CAIE and Edexcel boards and organizes them into directories based on the 
 exam board and subject.
 """
 import os
 import re
+import time
 import requests
 from bs4 import BeautifulSoup
 
 BASE_URL = 'https://papers.xtremepape.rs/'
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Connection': 'keep-alive',
+}
 
 def get_exam_board():
     """Prompt user to choose the examination board."""
     while True:
         print("\nChoose the examination board:")
-        print("1. Cambridge (CAIE)")
-        print("2. Edexcel")
-        choice = input("Enter your choice (1 or 2): ").strip()
+        print("1. Cambridge (CAIE) - Xtremepapers")
+        print("2. Edexcel - Xtremepapers")
+        print("3. Cambridge (CAIE) - Papacambridge")
+        choice = input("Enter your choice (1, 2 or 3): ").strip()
         if choice == '1':
-            return 'CAIE'
+            return ('CAIE', 'xtremepapers')
         if choice == '2':
-            return 'Edexcel'
-        print("Invalid choice. Please enter 1 or 2.")
+            return ('Edexcel', 'xtremepapers')
+        if choice == '3':
+            return ('CAIE', 'papacambridge')
+        print("Invalid choice. Please enter 1, 2 or 3.")
 
 def get_exam_level(exam_board):
     """Prompt user to choose the examination level based on the selected board."""
     while True:
         print("\nChoose the examination level:")
         if exam_board == 'CAIE':
-            print("1. O Level")
-            print("2. AS and A Level")
+            print("1. IGCSE")
+            print("2. O Level")
+            print("3. AS and A Level")
+            choice = input("Enter your choice (1, 2, or 3): ").strip()
+            if choice == '1':
+                return 'IGCSE'
+            if choice == '2':
+                return 'O+Level'
+            if choice == '3':
+                return 'AS+and+A+Level'
         else:  # Edexcel
             print("1. International GCSE")
             print("2. Advanced Level")
-        choice = input("Enter your choice (1 or 2): ").strip()
-        if choice == '1':
-            return 'O+Level' if exam_board == 'CAIE' else 'International+GCSE'
-        if choice == '2':
-            return 'AS+and+A+Level' if exam_board == 'CAIE' else 'Advanced+Level'
-        print("Invalid choice. Please enter 1 or 2.")
+            choice = input("Enter your choice (1 or 2): ").strip()
+            if choice == '1':
+                return 'International+GCSE'
+            if choice == '2':
+                return 'Advanced+Level'
+        print("Invalid choice. Please try again.")
 
 def get_subjects(exam_board, exam_level):
-    """Fetch subjects for the selected exam board and level."""
+    """Fetch subjects for the selected exam board and level from xtremepapers."""
     if exam_board == 'CAIE':
         url = f'{BASE_URL}index.php?dirpath=./CAIE/{exam_level}/&order=0'
     else:  # Edexcel
@@ -58,8 +76,51 @@ def get_subjects(exam_board, exam_level):
             subjects[subject_name] = BASE_URL + link['href']
     return subjects
 
+def get_papacambridge_subjects(exam_level):
+    """Fetch subjects from papacambridge."""
+    BASE_PC_URL = 'https://pastpapers.papacambridge.com/papers/caie/'
+    level_map = {
+        'O+Level': 'o-level',
+        'AS+and+A+Level': 'as-and-a-level',
+        'IGCSE': 'igcse'
+    }
+    
+    url = f'{BASE_PC_URL}{level_map[exam_level]}'
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        subjects = {}
+        # Find all subject divs
+        subject_items = soup.find_all('div', class_='kt-widget4__item item-folder-type')
+        
+        for item in subject_items:
+            # Skip advertisement divs
+            if 'adsbygoogle' in item.get('class', []):
+                continue
+                
+            link = item.find('a')
+            if link:
+                # Get the subject name from the span with class 'wraptext'
+                subject_span = link.find('span', class_='wraptext')
+                if subject_span:
+                    subject_name = subject_span.text.strip()
+                    # Skip empty or parent directory entries
+                    if subject_name and subject_name != '..':
+                        # Get the href link
+                        subject_url = link['href']
+                        if not subject_url.startswith('http'):
+                            subject_url = 'https://pastpapers.papacambridge.com/' + subject_url
+                        subjects[subject_name] = subject_url
+                    
+        return subjects
+    except requests.RequestException as e:
+        print(f"Error fetching subjects: {e}")
+        return {}
+
 def get_pdfs(subject_url, exam_board):
-    """Fetch PDF links for the selected subject."""
+    """Fetch PDF links for the selected subject from xtremepapers."""
     response = requests.get(subject_url, timeout=10)
     soup = BeautifulSoup(response.text, 'html.parser')
 
@@ -70,7 +131,7 @@ def get_pdfs(subject_url, exam_board):
     return {link.text.strip(): BASE_URL + link['href'] for link in pdf_links}
 
 def get_edexcel_pdfs(subject_url):
-    """Fetch PDF links for Edexcel subjects."""
+    """Fetch PDF links for Edexcel subjects from xtremepapers."""
     pdfs = {}
     response = requests.get(subject_url, timeout=10)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -98,37 +159,151 @@ def get_edexcel_pdfs(subject_url):
     return pdfs
 
 def get_pdfs_from_page(url):
-    """Fetch all PDF links from a specific page."""
+    """Fetch all PDF links from a specific xtremepapers page."""
     response = requests.get(url, timeout=10)
     soup = BeautifulSoup(response.text, 'html.parser')
     pdf_links = soup.find_all('a', class_='file', href=re.compile(r'\.pdf$'))
     return {link.text.strip(): BASE_URL + link['href'] for link in pdf_links}
 
-def download_pdf(url, filename, subject_dir, exam_board):
+def get_papacambridge_years(subject_url):
+    """Fetch available exam sessions/years for a subject from papacambridge."""
+    try:
+        response = requests.get(subject_url, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        years = {}
+        year_items = soup.find_all('div', class_='kt-widget4__item item-folder-type')
+        
+        for item in year_items:
+            # Skip advertisement divs
+            if 'adsbygoogle' in item.get('class', []):
+                continue
+                
+            link = item.find('a')
+            if link:
+                year_span = link.find('span', class_='wraptext')
+                if year_span:
+                    year_name = year_span.text.strip()
+                    # Skip special folders
+                    if (year_name and 
+                        year_name != '..' and 
+                        'Solved Past Papers' not in year_name and
+                        'Topical Past Papers' not in year_name):
+                        year_url = link['href']
+                        if not year_url.startswith('http'):
+                            year_url = 'https://pastpapers.papacambridge.com/' + year_url
+                        years[year_name] = year_url
+                    
+        return years
+    except requests.RequestException as e:
+        print(f"Error fetching years: {e}")
+        return {}
+
+def get_papacambridge_pdfs(subject_url):
+    """Fetch PDF links from papacambridge."""
+    try:
+        # First check if this is a subject page or an exam session page
+        response = requests.get(subject_url, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Check if this page has folders (years/sessions) or PDF files
+        folders = soup.find_all('div', class_='kt-widget4__item item-folder-type')
+        pdf_items = soup.find_all('div', class_='kt-widget4__item item-pdf-type')
+        
+        if folders and not pdf_items:
+            # This is a subject page, get years and then pdfs for each year
+            all_pdfs = {}
+            years = get_papacambridge_years(subject_url)
+            for year_name, year_url in years.items():
+                print(f"Fetching papers for {year_name}...")
+                year_pdfs = get_papacambridge_session_pdfs(year_url)
+                all_pdfs.update(year_pdfs)
+                time.sleep(0.5)  # Be nice to the server
+            return all_pdfs
+        else:
+            # This is already a session page with PDFs
+            return get_papacambridge_session_pdfs(subject_url)
+            
+    except requests.RequestException as e:
+        print(f"Error processing subject: {e}")
+        return {}
+
+def get_papacambridge_session_pdfs(session_url):
+    """Fetch PDF links from a specific papacambridge exam session page."""
+    pdfs = {}
+    try:
+        response = requests.get(session_url, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Find all PDF items
+        pdf_items = soup.find_all('div', class_='kt-widget4__item item-pdf-type')
+        
+        for item in pdf_items:
+            # Find the download link
+            download_link = item.find('a', href=re.compile(r'download_file\.php\?files=.*\.pdf'))
+            if download_link:
+                # Extract file URL from the download_file.php link
+                match = re.search(r'files=(.*\.pdf)', download_link['href'])
+                if match:
+                    pdf_url = match.group(1)
+                    
+                    # Extract the actual filename from the URL
+                    filename = os.path.basename(pdf_url)
+                    
+                    # Use the direct PDF URL, not the download_file.php URL
+                    pdfs[filename] = pdf_url
+        
+        return pdfs
+    except requests.RequestException as e:
+        print(f"Error fetching PDFs from session: {e}")
+        return {}
+
+def download_pdf(url, filename, subject_dir, exam_board, source):
     """Download a PDF and save it in the appropriate directory."""
-    response = requests.get(url, timeout=10)
-    subdir = categorize_pdf(filename, exam_board)
+    try:
+        if source == 'papacambridge':
+            # For direct PDF URLs from papacambridge
+            response = requests.get(url, headers=HEADERS, stream=True, timeout=10)
+        else:
+            response = requests.get(url, timeout=10)
+            
+        response.raise_for_status()
+        subdir = categorize_pdf(filename, exam_board)
 
-    dir_path = os.path.join(subject_dir, subdir)
-    os.makedirs(dir_path, exist_ok=True)
+        dir_path = os.path.join(subject_dir, subdir)
+        os.makedirs(dir_path, exist_ok=True)
 
-    file_path = os.path.join(dir_path, filename)
-    with open(file_path, 'wb') as f:
-        f.write(response.content)
-    print(f"Downloaded: {filename}")
+        file_path = os.path.join(dir_path, filename)
+        
+        # Use streaming for better performance with large files
+        with open(file_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:  # filter out keep-alive new chunks
+                    f.write(chunk)
+                
+        print(f"Downloaded: {filename}")
+        return True
+        
+    except requests.RequestException as e:
+        print(f"Error downloading {filename}: {e}")
+        return False
 
 def categorize_pdf(filename, exam_board):
     """Categorize the PDF as question paper, mark scheme, or miscellaneous."""
+    filename_lower = filename.lower()
     if exam_board == 'CAIE':
-        if '_ms_' in filename:
+        if '_ms_' in filename_lower or 'mark_scheme' in filename_lower:
             return 'ms'
-        if '_qp_' in filename:
+        if '_qp_' in filename_lower or 'question_paper' in filename_lower:
             return 'qp'
         return 'misc'
     # Edexcel
-    if 'question' in filename.lower():
+    if 'question' in filename_lower:
         return 'qp'
-    if 'mark' in filename.lower() or 'ms' in filename.lower():
+    if 'mark' in filename_lower or 'ms' in filename_lower:
         return 'ms'
     return 'misc'
 
@@ -144,32 +319,71 @@ def print_subjects_in_columns(subjects):
 
 def main():
     """Main function to run the script."""
-    exam_board = get_exam_board()
+    exam_board, source = get_exam_board()
     exam_level = get_exam_level(exam_board)
-    subjects = get_subjects(exam_board, exam_level)
+    
+    if source == 'xtremepapers':
+        subjects = get_subjects(exam_board, exam_level)
+    else:  # papacambridge
+        subjects = get_papacambridge_subjects(exam_level)
+
+    if not subjects:
+        print("No subjects found. Exiting...")
+        return
 
     print(f"\nAvailable subjects for {exam_board} {exam_level.replace('+', ' ')}:")
     print_subjects_in_columns(subjects)
 
     choices = input("\nEnter the numbers of the subjects you want to download (space-separated): ")
-    selected_indices = [int(x.strip()) for x in choices.split()]
+    try:
+        selected_indices = [int(x.strip()) for x in choices.split()]
+    except ValueError:
+        print("Invalid input. Please enter numbers only.")
+        return
 
     selected_subjects = list(subjects.keys())
     for index in selected_indices:
+        if index < 1 or index > len(selected_subjects):
+            print(f"Invalid subject number: {index}")
+            continue
+            
         subject = selected_subjects[index - 1]
         subject_url = subjects[subject]
         print(f"\nProcessing {subject}...")
 
-        pdfs = get_pdfs(subject_url, exam_board)
+        if source == 'xtremepapers':
+            pdfs = get_pdfs(subject_url, exam_board)
+        else:  # papacambridge
+            pdfs = get_papacambridge_pdfs(subject_url)
+            
+        if not pdfs:
+            print(f"No PDFs found for {subject}")
+            continue
+            
+        # For both sources, use the same structure with just CAIE as the base directory
         subject_dir = os.path.join(
-            exam_board,
+            exam_board,  # Use CAIE for both sources
             exam_level.replace('+', ' '),
             subject.replace('/', '_').replace('&', 'and')
         )
+        
         os.makedirs(subject_dir, exist_ok=True)
 
+        successful_downloads = 0
+        total_pdfs = len(pdfs)
+        
         for filename, pdf_url in pdfs.items():
-            download_pdf(pdf_url, filename, subject_dir, exam_board)
+            if download_pdf(pdf_url, filename, subject_dir, exam_board, source):
+                successful_downloads += 1
+            # Add a small delay to avoid overwhelming the server
+            time.sleep(0.5)
+            
+        print(f"\nCompleted {subject}: {successful_downloads} out of {total_pdfs} files downloaded successfully")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nProcess interrupted by user. Exiting...")
+    except Exception as e:
+        print(f"\nAn unexpected error occurred: {e}")

@@ -1,4 +1,4 @@
-"""Script to install exam paper downloader."""
+"""Script to install exam papers downloader."""
 import os
 from setuptools import setup, find_packages
 
@@ -11,8 +11,8 @@ with open(
 
 setup(
     name='exam_downloader',
-    version='0.1.0',
-    description='A script to download A-Level test papers and mark schemes from xtremepape.rs.',
+    version='0.2.0',
+    description='A script to download Cambridge (CAIE) and Edexcel exam papers from Xtremepapers and Papacambridge.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/fam007e/OandALvl-exam-paper-downloader',
@@ -33,6 +33,10 @@ setup(
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
+        'Topic :: Education',
+        'Topic :: Internet :: WWW/HTTP',
+        'Topic :: Utilities',
     ],
+    keywords='education, exams, cambridge, edexcel, igcse, a-level, o-level, papacambridge, xtremepapers',
     python_requires='>=3.6',
 )
