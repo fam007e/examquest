@@ -27,59 +27,62 @@ def setup_venv():
 def run_app():
     """Start both backend and frontend servers and monitor them."""
     python_exe = get_python_executable()
+    is_windows = os.name == 'nt'
 
     # 1. Start the Backend
     print("🚀 Starting Backend (FastAPI)...")
-    with subprocess.Popen(
+    # We do not pipe stdout/stderr to avoid buffer saturation issues on Windows.
+    # Logs will flow naturally to the console.
+    # pylint: disable=consider-using-with
+    backend_proc = subprocess.Popen(
         [python_exe, "-m", "uvicorn", "main:app", "--app-dir", "backend", "--port", "8000"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
         bufsize=1
-    ) as backend_proc:
+    )
 
+    try:
         # 2. Wait for backend to be ready
         time.sleep(2)
 
         # 3. Check/Start the Frontend
         if not os.path.exists("frontend/node_modules"):
             print("📦 node_modules not found. Installing frontend dependencies...")
-            subprocess.run(["npm", "install"], cwd="frontend", check=True)
+            # Use shell=True for Windows to find 'npm'
+            subprocess.run(["npm", "install"], cwd="frontend", check=True, shell=is_windows)
 
         print("💻 Starting Frontend (Vite)...")
-        # Using 'with' for Popen to ensure proper resource management
-        with subprocess.Popen(
+        # Use shell=True for Windows to find 'npm'
+        # pylint: disable=consider-using-with
+        frontend_proc = subprocess.Popen(
             ["npm", "run", "dev"],
             cwd="frontend",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1
-        ) as frontend_proc:
+            shell=is_windows
+        )
 
-            print("\n" + "="*40)
-            print("✅ Application is running!")
-            print("👉 Backend:  http://localhost:8000")
-            print("👉 Frontend: http://localhost:5173")
-            print("="*40)
-            print("\nPress Ctrl+C to stop both servers.\n")
+        print("\n" + "="*40)
+        print("✅ Application is running!")
+        print("👉 Backend:  http://localhost:8000")
+        print("👉 Frontend: http://localhost:5173")
+        print("="*40)
+        print("\nPress Ctrl+C to stop both servers.\n")
 
-            try:
-                while True:
-                    # We could pipe logs here if desired, but keeping it clean
-                    time.sleep(1)
-                    # Check if processes are still alive
-                    if backend_proc.poll() is not None:
-                        print("❌ Backend stopped unexpectedly.")
-                        break
-                    if frontend_proc.poll() is not None:
-                        print("❌ Frontend stopped unexpectedly.")
-                        break
-            except KeyboardInterrupt:
-                print("\n🛑 Stopping servers...")
-                backend_proc.terminate()
-                frontend_proc.terminate()
-                print("👋 Goodbye!")
+        while True:
+            time.sleep(1)
+            # Check if processes are still alive
+            if backend_proc.poll() is not None:
+                print("❌ Backend stopped unexpectedly.")
+                break
+            if frontend_proc.poll() is not None:
+                print("❌ Frontend stopped unexpectedly.")
+                break
+    except KeyboardInterrupt:
+        print("\n🛑 Stopping servers...")
+    finally:
+        # Clean shutdown regardless of how we exited
+        if 'backend_proc' in locals() and backend_proc.poll() is None:
+            backend_proc.terminate()
+        if 'frontend_proc' in locals() and frontend_proc.poll() is None:
+            frontend_proc.terminate()
+        print("👋 Goodbye!")
 
 if __name__ == "__main__":
     try:
