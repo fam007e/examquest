@@ -1,15 +1,25 @@
+# pylint: disable=import-error
+"""
+Service for scraping exam papers from xtremepapers and papacambridge.
+"""
 import os
 import re
 import time
+from typing import Dict, List
+
 import requests
 from bs4 import BeautifulSoup
-from typing import Dict, List, Optional, Tuple
+from pypdf import PdfWriter
 
 class ExamScraperService:
+    """Service to handle scraping operations for different exam boards and sources."""
+
     BASE_URL = 'https://papers.xtremepape.rs/'
     HEADERS = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)'
-                      ' Chrome/91.0.4472.124 Safari/537.36',
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        ),
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
         'Connection': 'keep-alive',
@@ -39,7 +49,6 @@ class ExamScraperService:
 
     def get_papacambridge_subjects(self, exam_level: str) -> Dict[str, str]:
         """Fetch subjects from papacambridge."""
-        base_pc_url = 'https://pastpapers.papacambridge.com/papers/caie/'
         level_map = {
             'O Level': 'o-level',
             'AS and A Level': 'as-and-a-level',
@@ -51,33 +60,37 @@ class ExamScraperService:
         if not level_slug:
             return {}
 
-        url = f'{base_pc_url}{level_slug}'
+        url = f'https://pastpapers.papacambridge.com/papers/caie/{level_slug}'
         try:
             response = requests.get(url, headers=self.HEADERS, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
-            subjects = {}
-            subject_items = soup.find_all('div', class_='kt-widget4__item item-folder-type')
-            for item in subject_items:
-                if 'adsbygoogle' in item.get('class', []):
-                    continue
-                link = item.find('a')
-                if not link:
-                    continue
-                subject_span = link.find('span', class_='wraptext')
-                if not subject_span:
-                    continue
-                subject_name = subject_span.text.strip()
-                if not subject_name or subject_name == '..':
-                    continue
-                subject_url = link['href']
-                if not subject_url.startswith('http'):
-                    subject_url = 'https://pastpapers.papacambridge.com/' + subject_url
-                subjects[subject_name] = subject_url
-            return subjects
+            return self._parse_pc_subjects(soup)
         except requests.RequestException as e:
             print(f"Error fetching papacambridge subjects: {e}")
             return {}
+
+    def _parse_pc_subjects(self, soup: BeautifulSoup) -> Dict[str, str]:
+        """Helper to parse subjects from papacambridge soup."""
+        subjects = {}
+        items = soup.find_all('div', class_='kt-widget4__item item-folder-type')
+        for item in items:
+            if 'adsbygoogle' in item.get('class', []):
+                continue
+            link = item.find('a')
+            if not link:
+                continue
+            span = link.find('span', class_='wraptext')
+            if not span:
+                continue
+            name = span.text.strip()
+            if not name or name == '..':
+                continue
+            url = link['href']
+            if not url.startswith('http'):
+                url = 'https://pastpapers.papacambridge.com/' + url
+            subjects[name] = url
+        return subjects
 
     def get_pdfs(self, subject_url: str, exam_board: str, source: str) -> Dict[str, str]:
         """Fetch PDF links for the selected subject."""
@@ -112,13 +125,11 @@ class ExamScraperService:
                     pdfs.update(year_pdfs)
 
                     # Also check for qp/ms subdirs if they exist
-                    # Note: original code had specific logic for [Question-paper] and [Mark-scheme]
-                    # which I'll keep but refine
                     year_response = requests.get(year_url, timeout=10)
                     year_soup = BeautifulSoup(year_response.text, 'html.parser')
 
                     for sub_dir_name in ['[Question-paper]', '[Mark-scheme]']:
-                        sub_link = year_soup.find('a', class_='directory', text=sub_dir_name)
+                        sub_link = year_soup.find('a', class_='directory', string=sub_dir_name)
                         if sub_link:
                             sub_url = self.BASE_URL + sub_link['href']
                             pdfs.update(self._get_pdfs_from_xtremepapers_page(sub_url))
@@ -170,16 +181,20 @@ class ExamScraperService:
                 if 'adsbygoogle' in item.get('class', []):
                     continue
                 link = item.find('a')
-                if not link: continue
+                if not link:
+                    continue
                 year_span = link.find('span', class_='wraptext')
-                if not year_span: continue
-                year_name = year_span.text.strip()
-                if not year_name or year_name == '..' or 'Solved' in year_name or 'Topical' in year_name:
+                if not year_span:
+                    continue
+                name = year_span.text.strip()
+                is_invalid = not name or name == '..'
+                is_special = 'Solved' in name or 'Topical' in name
+                if is_invalid or is_special:
                     continue
                 year_url = link['href']
                 if not year_url.startswith('http'):
                     year_url = 'https://pastpapers.papacambridge.com/' + year_url
-                years[year_name] = year_url
+                years[name] = year_url
             return years
         except requests.RequestException:
             return {}
@@ -191,7 +206,8 @@ class ExamScraperService:
             soup = BeautifulSoup(response.text, 'html.parser')
             pdf_items = soup.find_all('div', class_='kt-widget4__item item-pdf-type')
             for item in pdf_items:
-                download_link = item.find('a', href=re.compile(r'download_file\.php\?files=.*\.pdf'))
+                dl_pattern = r'download_file\.php\?files=.*\.pdf'
+                download_link = item.find('a', href=re.compile(dl_pattern))
                 if download_link:
                     match = re.search(r'files=(.*\.pdf)', download_link['href'])
                     if match:
@@ -230,7 +246,6 @@ class ExamScraperService:
 
     def merge_pdfs(self, file_paths: List[str], output_path: str):
         """Merge multiple PDFs into one."""
-        from pypdf import PdfWriter
         merger = PdfWriter()
         for pdf in file_paths:
             if os.path.exists(pdf):

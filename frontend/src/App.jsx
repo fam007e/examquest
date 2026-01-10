@@ -237,13 +237,21 @@ function App() {
                 <button
                   key={board.id}
                   onClick={() => handleBoardSelect(board)}
-                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 text-sm font-medium ${selectedBoard?.id === board.id
+                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 text-sm font-medium group ${selectedBoard?.id === board.id
                     ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/30'
                     : 'hover:bg-white/5 text-gray-400 hover:text-gray-200 border border-transparent hover:border-white/10'
                     }`}
                 >
                   <Layers size={18} className={selectedBoard?.id === board.id ? '' : 'opacity-60'} />
-                  <span className="truncate">{board.name.split(' - ')[0]}</span>
+                  <div className="flex flex-col items-start min-w-0">
+                    <span className="truncate w-full">{board.board}</span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-md mt-0.5 uppercase tracking-wider font-bold ${selectedBoard?.id === board.id
+                      ? 'bg-white/20 text-white'
+                      : 'bg-white/5 text-gray-500 group-hover:text-gray-400 border border-white/5'
+                      }`}>
+                      {board.source}
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>
