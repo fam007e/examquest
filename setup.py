@@ -1,4 +1,5 @@
 """Script to install exam papers downloader."""
+# pylint: disable=import-error
 import os
 from setuptools import setup, find_packages
 
