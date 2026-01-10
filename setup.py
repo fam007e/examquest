@@ -13,7 +13,7 @@ with open(
 setup(
     name='exam_downloader',
     version='0.2.0',
-    description='A script to download Cambridge (CAIE) and Edexcel exam papers.',
+    description='A premium full-stack platform for downloading CAIE and Edexcel exam papers.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/fam007e/OandALvl-exam-paper-downloader',

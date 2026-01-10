@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![React 18](https://img.shields.io/badge/React-18-61DAFB)](https://reactjs.org/)
 
-**ExamQuest** is a premium, interactive tool designed to simplify the retrieval of past exam papers for Cambridge (CAIE) and Edexcel boards. Formerly a CLI-only script, it now features a high-end web dashboard for seamless searching, filtering, and mass-downloading.
+**ExamQuest** is a high-performance, full-stack platform designed for the modern-day student. It streamlines the retrieval of past exam papers for Cambridge (CAIE) and Edexcel boards through a stunning, interactive web dashboard. With real-time filtering, automated merging, and a premium UI, it transforms the tedious process of finding papers into a seamless experience.
 
 ---
 
