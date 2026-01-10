@@ -401,3 +401,5 @@ if __name__ == "__main__":
         print("\nProcess interrupted by user. Exiting...")
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"\nAn unexpected error occurred: {e}")
+    finally:
+        print("\nScript execution completed.")
