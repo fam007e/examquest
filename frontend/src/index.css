@@ -1,0 +1,322 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+/* Custom theme configuration for Tailwind v4 */
+@theme {
+  /* Colors */
+  --color-primary: #6366f1;
+  --color-primary-dark: #4f46e5;
+  --color-primary-light: #818cf8;
+
+  --color-secondary: #8b5cf6;
+  --color-secondary-dark: #7c3aed;
+  --color-secondary-light: #a78bfa;
+
+  --color-accent-blue: #3b82f6;
+  --color-accent-cyan: #06b6d4;
+  --color-accent-emerald: #10b981;
+  --color-accent-amber: #f59e0b;
+  --color-accent-rose: #f43f5e;
+
+  --color-dark-bg: #0a0a0c;
+  --color-dark-card: #16161e;
+  --color-dark-border: #2a2a32;
+  --color-dark-hover: #1e1e28;
+
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-error: #ef4444;
+
+  /* Font Family */
+  --font-outfit: 'Outfit', sans-serif;
+
+  /* Custom shadows */
+  --shadow-glow-sm: 0 0 10px rgba(99, 102, 241, 0.2);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+  --shadow-glow-lg: 0 0 40px rgba(99, 102, 241, 0.4);
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-dark-bg);
+  color: #f3f4f6;
+  font-family: var(--font-outfit);
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  min-height: 100vh;
+}
+
+::selection {
+  background-color: rgba(99, 102, 241, 0.3);
+}
+
+/* Glassmorphism Utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-premium {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-card);
+}
+
+.glass-hover:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-glow);
+  transition: all 0.3s ease;
+}
+
+/* Glow Effects */
+.glow-primary {
+  box-shadow: var(--shadow-glow);
+}
+
+.glow-focus:focus-within {
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.35);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+/* Skeleton animation */
+@keyframes shimmer {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.98);
+  }
+
+  50% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0.4;
+    transform: scale(0.98);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Float animation */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Global Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-dark-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary), var(--color-accent-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
+/* Shadow utilities */
+.shadow-glow-sm {
+  box-shadow: var(--shadow-glow-sm);
+}
+
+.shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+.shadow-glow-lg {
+  box-shadow: var(--shadow-glow-lg);
+}
+
+.shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+/* Button Styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: white;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.35);
+  transform: scale(1.02);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.05);
+  color: #d1d5db;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Card Styles */
+.card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  transition: all 0.3s ease;
+}
+
+.card-interactive {
+  cursor: pointer;
+}
+
+.card-interactive:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-glow);
+}
+
+/* Input Styles */
+.input {
+  width: 100%;
+  background: var(--color-dark-card);
+  border: 1px solid var(--color-dark-border);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: #f3f4f6;
+  transition: all 0.2s ease;
+}
+
+.input::placeholder {
+  color: #6b7280;
+}
+
+.input:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Subject category borders */
+.subject-science {
+  border-left: 4px solid var(--color-accent-cyan);
+}
+
+.subject-math {
+  border-left: 4px solid var(--color-accent-blue);
+}
+
+.subject-languages {
+  border-left: 4px solid var(--color-accent-amber);
+}
+
+.subject-humanities {
+  border-left: 4px solid var(--color-accent-emerald);
+}
+
+.subject-arts {
+  border-left: 4px solid var(--color-accent-rose);
+}
+
+.subject-default {
+  border-left: 4px solid var(--color-primary);
+}
+
+/* Paper type badges */
+.paper-qp {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--color-accent-blue);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.paper-ms {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--color-accent-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.paper-er {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--color-accent-amber);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}

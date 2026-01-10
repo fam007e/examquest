@@ -1,0 +1,7 @@
+/* App-specific overrides */
+
+#root {
+  min-height: 100vh;
+}
+
+/* Remove default Vite styles - use Tailwind instead */

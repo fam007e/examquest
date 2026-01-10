@@ -1,144 +1,97 @@
-# O and A Levels Exam Papers Downloader
+# ExamQuest: Interactive O & A Level Paper Downloader
 
-This Python script allows users to download past papers for Cambridge (CAIE) and Edexcel examinations from multiple sources.
+[![Build Status](https://img.shields.io/badge/Build-Success-brightgreen)](https://github.com/fam007e/OandALvl-exam-paper-downloader)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
+[![React 18](https://img.shields.io/badge/React-18-61DAFB)](https://reactjs.org/)
 
-## Features
+**ExamQuest** is a premium, interactive tool designed to simplify the retrieval of past exam papers for Cambridge (CAIE) and Edexcel boards. Formerly a CLI-only script, it now features a high-end web dashboard for seamless searching, filtering, and mass-downloading.
 
-- Download past papers from multiple sources:
-  - Xtremepapers (CAIE and Edexcel)
-  - Papacambridge (CAIE)
-- Choose between different examination levels:
-  - CAIE: IGCSE, O Level, and AS/A Level
-  - Edexcel: International GCSE and Advanced Level
-- View available subjects for the chosen examination level
-- Select multiple subjects for download
-- Automatically categorizes papers by type (question papers, mark schemes, etc.)
-- Smart retry mechanism for failed downloads
-- User-friendly interface with columnar display of subjects
+---
 
-## Requirements
+## ✨ Features
 
-- Python 3.6 or higher
-- Required libraries:
-  ```
-  requests
-  beautifulsoup4
-  ```
+### 💻 Modern Web Dashboard
+- **Luxury UI**: Multi-layered glassmorphism and smooth animations.
+- **Specialized Icons**: Handcrafted SVGs for major subjects (Physics, Chemistry, Math, etc.).
+- **Global Search**: Instantly find subjects by name or code across all boards.
+- **Favorites**: Star your most-used subjects for instant access.
+- **Mass Download & Merge**: Download multiple years at once or merge them into a single PDF with one click.
 
-## Installation
+### 🐚 Powerful CLI (Legacy)
+- For advanced users who prefer the command line.
+- Same robust scraping logic with columnar subject displays.
 
-There are multiple ways to install and use this tool:
+---
 
-### Method 1: Quick download and run
+## 📋 Prerequisites
 
-1. Ensure you have Python 3.6+ installed on your system.
+Ensure these are installed before running:
 
-2. Install the required libraries:
+| Requirement | Version | Download |
+|-------------|---------|----------|
+| **Python** | 3.10+ | [python.org](https://www.python.org/downloads/) |
+| **Node.js** | 18+ | [nodejs.org](https://nodejs.org/) |
 
+> [!TIP]
+> On Windows, check **"Add Python to PATH"** during installation.
+
+Verify your setup:
 ```bash
-pip install requests beautifulsoup4
+python3 --version   # or `python --version` on Windows
+node --version
 ```
 
-3. Download the script using curl:
+---
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/fam007e/OandALvl-exam-paper-downloader/refs/heads/main/o_and_a_lv_qp_sdl.py -o o_and_a_lv_qp_sdl.py
-```
+## ⚡ Quick Start
 
-### Method 2: Clone repository and use requirements.txt
+The fastest way to get started is using the integrated runner script:
 
-1. Clone the repository:
+1. **Clone the repo**:
+   ```bash
+   git clone https://github.com/fam007e/OandALvl-exam-paper-downloader.git
+   cd OandALvl-exam-paper-downloader
+   ```
 
-```bash
-git clone https://github.com/fam007e/OandALvl-exam-paper-downloader.git
-cd OandALvl-exam-paper-downloader
-```
+2. **Run the Interactive Dashboard (Web)**:
+   ```bash
+   python run_app.py
+   ```
+   *This script automatically creates a **Virtual Environment (.venv)**, installs all dependencies, and launches the app. This avoids "Externally Managed Environment" errors found on Arch, Fedora, etc.*
 
-2. Install dependencies from requirements.txt:
+3. **Run the Legacy CLI**:
+   ```bash
+   python o_and_a_lv_qp_sdl.py
+   ```
+   *For advanced users who prefer a terminal-based interface.*
 
-```bash
-pip install -r requirements.txt
-```
+---
 
-### Method 3: Install as a Python package
+## 🛠️ Project Structure
 
-1. Clone the repository:
+- `/backend`: FastAPI service handling the scraper logic and PDF processing.
+- `/frontend`: Vite + React dashboard with Tailwind CSS and Framer Motion.
+- `o_and_a_lv_qp_sdl.py`: The original standalone CLI script.
+- `run_app.py`: The unified automation runner.
 
-```bash
-git clone https://github.com/fam007e/OandALvl-exam-paper-downloader.git
-cd OandALvl-exam-paper-downloader
-```
+---
 
-2. Install the package:
+## 🤝 Community Standards
 
-```bash
-pip install .
-```
+We follow standard GitHub community guidelines:
+- [CONTRIBUTING.md](CONTRIBUTING.md): Guidelines on how to contribute features or report bugs.
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): Our pledge to a welcoming community.
+- [SECURITY.md](SECURITY.md): How to report security vulnerabilities.
 
-This will make the tool available as a command-line utility called `exam-downloader`.
+---
 
-## Usage
+## ⚖️ License
 
-If you installed using Method 1 or 2:
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-```bash
-python o_and_a_lv_qp_sdl.py
-```
+---
 
-If you installed using Method 3:
+## 🎓 Note
 
-```bash
-exam-downloader
-```
-
-Then follow the on-screen prompts:
-   - Choose the examination board (CAIE from Xtremepapers, Edexcel from Xtremepapers, or CAIE from Papacambridge)
-   - Choose the examination level (varies by board)
-   - Select the subjects you want to download papers for
-   - Wait for the download to complete
-
-The script will:
-   - Fetch available subjects from the selected source
-   - Display subjects in a user-friendly columnar format
-   - Download selected papers with appropriate timeouts
-   - Create organized folder structure for downloaded papers
-   - Show download progress and summary statistics
-
-The downloaded papers will be organized in folders by:
-   - Examination board (CAIE/Edexcel)
-   - Examination level (O Level, AS/A Level, etc.)
-   - Subject
-   - Paper type (`ms` for mark schemes, `qp` for question papers, and `misc` for other types)
-
-## Technical Details
-
-- Implements proper error handling and request timeouts
-- Uses streaming downloads for better performance with large files
-- Includes appropriate delays between requests to be respectful to the server
-- Handles differences in website structures between Xtremepapers and Papacambridge
-- Automatically categorizes papers based on filename patterns
-
-## Note
-
-Please be respectful of the websites and avoid overloading their servers with too many requests in a short time. The script includes small delays between requests to minimize server impact.
-
-## Merging Papers
-
-After downloading the papers, you can run the `pdfmerger.sh` script to merge the papers by type using `poppler` utility package `pdfunite`:
-
-```bash
-bash pdfmerger.sh
-```
-
-The script will:
-
-- Find and merge the papers (question papers, mark schemes, etc.) for each paper type (e.g., `qp_1`, `qp_2`, etc.) into single PDFs.
-- Save the merged PDFs in the `merged` directory.
-
-## License
-
-This project is open source and available under the [LICENSE](LICENSE).
-
-## Contributing
-
-Contributions, issues, and feature requests are welcome. Feel free to check [issues page](https://github.com/fam007e/OandALvl-exam-paper-downloader/issues) if you want to contribute.
+Please use this tool responsibly. Respect the source websites (Xtremepapers and Papacambridge) by avoiding excessive request volume. This tool is designed for educational purposes only.

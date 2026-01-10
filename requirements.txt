@@ -1,3 +1,7 @@
 requests>=2.32.2
 beautifulsoup4>=4.9.3
 urllib3>=2.6.3 # not directly required, pinned by Snyk to avoid a vulnerability
+fastapi>=0.111.0
+uvicorn>=0.30.0
+pypdf>=4.2.0
+python-multipart>=0.0.9
