@@ -309,7 +309,7 @@ function App() {
           <div className="space-y-3">
             <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold ml-1">About</p>
             <a
-              href="https://github.com"
+              href="https://github.com/fam007e/OandALvl-exam-paper-downloader/tree/dev"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all text-xs group"
