@@ -142,21 +142,25 @@ function App() {
         window.location.href = url;
     };
 
-    const downloadMerged = async () => {
-        if (papers.length === 0) return;
+    const downloadMerged = async (customPapers = null, customName = null) => {
+        const papersToMerge = customPapers || papers.slice(0, 10);
+        if (papersToMerge.length === 0) return;
+
         setLoading(true);
+        const fileName = customName || `${selectedSubject.name}_merged.pdf`;
         try {
             const res = await axios.post(`${API_BASE}/merge`, {
-                papers: papers.slice(0, 10),
-                output_name: `${selectedSubject.name}_merged.pdf`
+                papers: papersToMerge,
+                output_name: fileName
             }, { responseType: 'blob' });
 
             const url = window.URL.createObjectURL(new Blob([res.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `${selectedSubject.name}_merged.pdf`);
+            link.setAttribute('download', fileName);
             document.body.appendChild(link);
             link.click();
+            link.remove();
         } catch (err) {
             console.error("Failed to merge", err);
         } finally {
@@ -168,11 +172,27 @@ function App() {
         s.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const mergedPapers = useMemo(() => {
+    const groupedPapers = useMemo(() => {
         const groups = {};
         papers.forEach(p => {
-            if (!groups[p.type]) groups[p.type] = [];
-            groups[p.type].push(p);
+            // Backend type is like "qp_1", "ms_2", or "misc"
+            const [baseType, paperNum] = p.type.split('_');
+            if (!groups[baseType]) groups[baseType] = { name: baseType === 'qp' ? 'Question Papers' : baseType === 'ms' ? 'Mark Schemes' : 'Other resources', papers: [] };
+            groups[baseType].papers.push(p);
+        });
+        return groups;
+    }, [papers]);
+
+    const paperSpecificGroups = useMemo(() => {
+        const groups = {};
+        papers.forEach(p => {
+            if (p.type.includes('_')) {
+                const [type, num] = p.type.split('_');
+                if (type === 'qp') {
+                    if (!groups[num]) groups[num] = [];
+                    groups[num].push(p);
+                }
+            }
         });
         return groups;
     }, [papers]);
@@ -286,8 +306,6 @@ function App() {
                                             try {
                                                 const res = await axios.get(`${API_BASE}/levels/${fav.board.id}`);
                                                 setLevels(res.data);
-                                                // We don't fetch subjects because we are viewing papers,
-                                                // but this ensures the Level Pills are correct if user clicks one.
                                             } catch (err) {
                                                 console.error("Failed to sync levels on bookmark click", err);
                                             }
@@ -524,14 +542,33 @@ function App() {
                                         </div>
                                     </div>
 
-                                    <button
-                                        onClick={downloadMerged}
-                                        disabled={loading || papers.length === 0}
-                                        className="btn-primary py-3.5 px-6 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <Download size={18} />
-                                        <span>Download All Merged</span>
-                                    </button>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        {Object.entries(paperSpecificGroups).length > 0 && (
+                                            <div className="flex items-center gap-2 mr-2 p-1.5 bg-accent-amber/10 rounded-2xl border border-accent-amber/20">
+                                                <div className="flex items-center gap-2 px-3">
+                                                    <Sparkles size={14} className="text-accent-amber" />
+                                                    <span className="text-[10px] uppercase font-bold tracking-wider text-accent-amber">Smart Merge</span>
+                                                </div>
+                                                {Object.entries(paperSpecificGroups).sort().map(([num, list]) => (
+                                                    <button
+                                                        key={num}
+                                                        onClick={() => downloadMerged(list, `${selectedSubject.name}_Paper_${num}_Merged.pdf`)}
+                                                        className="px-3 py-1.5 bg-white/5 hover:bg-accent-amber/20 rounded-xl text-[10px] font-bold transition-all border border-white/5 hover:border-accent-amber/30 group"
+                                                    >
+                                                        Paper {num} <span className="text-gray-500 group-hover:text-accent-amber/70 font-normal ml-1">({list.length})</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={() => downloadMerged()}
+                                            disabled={loading || papers.length === 0}
+                                            className="btn-primary py-3.5 px-6 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <Download size={18} />
+                                            <span>Download All Merged</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {loading ? (
@@ -541,7 +578,7 @@ function App() {
                                     </div>
                                 ) : (
                                     <div className="space-y-10">
-                                        {Object.entries(mergedPapers).map(([type, list]) => (
+                                        {Object.entries(groupedPapers).map(([type, group]) => (
                                             <section key={type} className="space-y-5">
                                                 {/* Section Header */}
                                                 <div className="flex items-center gap-4">
@@ -549,17 +586,17 @@ function App() {
                                                         type === 'ms' ? 'bg-accent-emerald' : 'bg-gray-500'
                                                         }`} />
                                                     <h4 className="text-sm font-bold uppercase tracking-[0.25em] text-gray-400">
-                                                        {type === 'qp' ? 'Question Papers' : type === 'ms' ? 'Mark Schemes' : 'Other Resources'}
+                                                        {group.name}
                                                     </h4>
                                                     <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-white/5 text-gray-500">
-                                                        {list.length}
+                                                        {group.papers.length}
                                                     </span>
                                                     <div className="flex-1 border-b border-white/5" />
                                                 </div>
 
                                                 {/* Papers Grid */}
                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                                    {list.map((paper, idx) => (
+                                                    {group.papers.map((paper, idx) => (
                                                         <motion.div
                                                             initial={{ opacity: 0, y: 10 }}
                                                             animate={{ opacity: 1, y: 0 }}
