@@ -77,6 +77,8 @@ function App() {
 
     const handleBoardSelect = async (board) => {
         setSelectedBoard(board);
+        setSelectedSubject(null);
+        setPapers([]);
         setLoading(true);
         setMobileMenuOpen(false);
         try {
@@ -105,15 +107,16 @@ function App() {
         }
     };
 
-    const fetchPapers = async (subject) => {
+    const fetchPapers = async (subject, boardOverride = null) => {
         setSelectedSubject(subject);
         setLoading(true);
         try {
+            const board = boardOverride || selectedBoard;
             const res = await axios.get(`${API_BASE}/papers`, {
                 params: {
                     subject_url: subject.url,
-                    board: selectedBoard.board,
-                    source: selectedBoard.source
+                    board: board.board,
+                    source: board.source
                 }
             });
             setPapers(res.data);
@@ -272,11 +275,20 @@ function App() {
                                 {favorites.map(fav => (
                                     <button
                                         key={fav.url}
-                                        onClick={() => {
+                                        onClick={async () => {
                                             setSelectedBoard(fav.board);
                                             setSelectedLevel(fav.level);
-                                            fetchPapers(fav);
                                             setMobileMenuOpen(false);
+                                            // Fetch papers immediately
+                                            fetchPapers(fav, fav.board);
+
+                                            // Also fetch the correct levels/subjects for this board update the sidebar/header
+                                            try {
+                                                const res = await axios.get(`${API_BASE}/levels/${fav.board.id}`);
+                                                setLevels(res.data);
+                                            } catch (err) {
+                                                console.error("Failed to sync levels on bookmark click", err);
+                                            }
                                         }}
                                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-accent-amber/30 hover:bg-accent-amber/5 transition-all text-xs text-left group"
                                     >
@@ -353,6 +365,8 @@ function App() {
                                 key={level}
                                 onClick={() => {
                                     setSelectedLevel(level);
+                                    setSelectedSubject(null);
+                                    setPapers([]);
                                     fetchSubjects(selectedBoard, level);
                                 }}
                                 className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 whitespace-nowrap ${selectedLevel === level
@@ -373,6 +387,8 @@ function App() {
                             key={level}
                             onClick={() => {
                                 setSelectedLevel(level);
+                                setSelectedSubject(null);
+                                setPapers([]);
                                 fetchSubjects(selectedBoard, level);
                             }}
                             className={`px-4 py-2 rounded-lg text-xs font-bold shrink-0 transition-all ${selectedLevel === level
