@@ -64,8 +64,6 @@ function App() {
     }, [favorites]);
 
     const fetchBoards = async () => {
-        console.group("DEBUG: fetchBoards");
-        console.trace("Trace for fetchBoards");
         try {
             const res = await axios.get(`${API_BASE}/boards`);
             setBoards(res.data);
@@ -75,12 +73,9 @@ function App() {
         } catch (err) {
             console.error("Failed to fetch boards", err);
         }
-        console.groupEnd();
     };
 
     const handleBoardSelect = async (board) => {
-        console.group("DEBUG: handleBoardSelect", board.id);
-        console.trace("Trace for handleBoardSelect");
         setSelectedBoard(board);
         setSelectedSubject(null);
         setPapers([]);
@@ -94,12 +89,9 @@ function App() {
         } catch {
             setLoading(false);
         }
-        console.groupEnd();
     };
 
     const fetchSubjects = async (board, level) => {
-        console.group("DEBUG: fetchSubjects", board.id, level);
-        console.trace("Trace for fetchSubjects");
         setLoading(true);
         setSubjects([]);
         setSelectedSubject(null);
@@ -113,12 +105,9 @@ function App() {
         } finally {
             setLoading(false);
         }
-        console.groupEnd();
     };
 
     const fetchPapers = async (subject, boardOverride = null) => {
-        console.group("DEBUG: fetchPapers", subject.name);
-        console.trace("Trace for fetchPapers");
         setSelectedSubject(subject);
         setLoading(true);
         try {
@@ -136,7 +125,6 @@ function App() {
         } finally {
             setLoading(false);
         }
-        console.groupEnd();
     };
 
     const toggleFavorite = (e, subject) => {
@@ -288,7 +276,6 @@ function App() {
                                     <button
                                         key={fav.url}
                                         onClick={async () => {
-                                            console.log("DEBUG: Bookmark clicked", fav.name);
                                             setSelectedBoard(fav.board);
                                             setSelectedLevel(fav.level);
                                             setMobileMenuOpen(false);
