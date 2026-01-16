@@ -221,6 +221,7 @@ class ExamScraperService:
     def categorize_pdf(self, filename: str, exam_board: str) -> str:
         """Categorize the PDF with specific paper numbers, avoiding subject codes/years."""
         filename_lower = filename.lower()
+        result = 'misc'
 
         if exam_board == 'CAIE':
             # Extract number following _qp_ or _ms_ (e.g., '1' from '_qp_11')
@@ -228,22 +229,21 @@ class ExamScraperService:
             paper_num = num_match.group(1) if num_match else ""
 
             if '_ms_' in filename_lower or 'mark_scheme' in filename_lower:
-                return f'ms_{paper_num}' if paper_num else 'ms'
-            if '_qp_' in filename_lower or 'question_paper' in filename_lower:
-                return f'qp_{paper_num}' if paper_num else 'qp'
-            return 'misc'
+                result = f'ms_{paper_num}' if paper_num else 'ms'
+            elif '_qp_' in filename_lower or 'question_paper' in filename_lower:
+                result = f'qp_{paper_num}' if paper_num else 'qp'
 
-        if exam_board == 'Edexcel':
+        elif exam_board == 'Edexcel':
             if re.search(r'Paper[ ]?1[PpRr]?', filename, re.IGNORECASE):
-                return 'qp_1'
-            if re.search(r'Paper[ ]?2[PpRr]?', filename, re.IGNORECASE):
-                return 'qp_2'
+                result = 'qp_1'
+            elif re.search(r'Paper[ ]?2[PpRr]?', filename, re.IGNORECASE):
+                result = 'qp_2'
+            elif 'question' in filename_lower:
+                result = 'qp'
+            elif 'mark' in filename_lower or 'ms' in filename_lower:
+                result = 'ms'
 
-            if 'question' in filename_lower:
-                return 'qp'
-            if 'mark' in filename_lower or 'ms' in filename_lower:
-                return 'ms'
-        return 'misc'
+        return result
 
     async def download_paper(self, url: str, filename: str) -> str:
         """Download a paper to a temporary location."""
