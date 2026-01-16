@@ -219,19 +219,31 @@ class ExamScraperService:
             return {}
 
     def categorize_pdf(self, filename: str, exam_board: str) -> str:
-        """Categorize the PDF as question paper, mark scheme, or miscellaneous."""
+        """Categorize the PDF as question paper, mark scheme, or miscellaneous with paper numbers."""
         filename_lower = filename.lower()
+
+        # Try to extract paper number (e.g., _qp_1, _ms_2, paper 3)
+        paper_num_match = re.search(r'([0-9])', filename_lower)
+        paper_num = paper_num_match.group(1) if paper_num_match else ""
+
         if exam_board == 'CAIE':
             if '_ms_' in filename_lower or 'mark_scheme' in filename_lower:
-                return 'ms'
+                return f'ms_{paper_num}' if paper_num else 'ms'
             if '_qp_' in filename_lower or 'question_paper' in filename_lower:
-                return 'qp'
+                return f'qp_{paper_num}' if paper_num else 'qp'
             return 'misc'
+
         # Edexcel
-        if 'question' in filename_lower:
-            return 'qp'
-        if 'mark' in filename_lower or 'ms' in filename_lower:
-            return 'ms'
+        if exam_board == 'Edexcel':
+            if re.search(r'Paper1P|Paper1PR', filename, re.IGNORECASE):
+                return 'qp_1'
+            if re.search(r'Paper2P|Paper2PR', filename, re.IGNORECASE):
+                return 'qp_2'
+
+            if 'question' in filename_lower:
+                return f'qp_{paper_num}' if paper_num else 'qp'
+            if 'mark' in filename_lower or 'ms' in filename_lower:
+                return f'ms_{paper_num}' if paper_num else 'ms'
         return 'misc'
 
     async def download_paper(self, url: str, filename: str) -> str:
