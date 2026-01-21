@@ -176,7 +176,7 @@ function App() {
         const groups = {};
         papers.forEach(p => {
             // Backend type is like "qp_1", "ms_2", or "misc"
-            const [baseType, paperNum] = p.type.split('_');
+            const [baseType] = p.type.split('_');
             if (!groups[baseType]) groups[baseType] = { name: baseType === 'qp' ? 'Question Papers' : baseType === 'ms' ? 'Mark Schemes' : 'Other resources', papers: [] };
             groups[baseType].papers.push(p);
         });
