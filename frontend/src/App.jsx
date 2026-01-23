@@ -79,6 +79,7 @@ function App() {
         setSelectedBoard(board);
         setSelectedSubject(null);
         setPapers([]);
+        setSearchQuery(''); // Reset search when changing boards
         setLoading(true);
         setMobileMenuOpen(false);
         try {
@@ -95,6 +96,7 @@ function App() {
         setLoading(true);
         setSubjects([]);
         setSelectedSubject(null);
+        setSearchQuery(''); // Reset search when changing levels
         try {
             const res = await axios.get(`${API_BASE}/subjects`, {
                 params: { source: board.source, board: board.board, level: level }
@@ -109,6 +111,7 @@ function App() {
 
     const fetchPapers = async (subject, boardOverride = null) => {
         setSelectedSubject(subject);
+        setSearchQuery(''); // Reset search when viewing a specific subject
         setLoading(true);
         try {
             const board = boardOverride || selectedBoard;
@@ -172,20 +175,25 @@ function App() {
         s.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const filteredPapers = papers.filter(p =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.type.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     const groupedPapers = useMemo(() => {
         const groups = {};
-        papers.forEach(p => {
+        filteredPapers.forEach(p => {
             // Backend type is like "qp_1", "ms_2", or "misc"
             const [baseType] = p.type.split('_');
             if (!groups[baseType]) groups[baseType] = { name: baseType === 'qp' ? 'Question Papers' : baseType === 'ms' ? 'Mark Schemes' : 'Other resources', papers: [] };
             groups[baseType].papers.push(p);
         });
         return groups;
-    }, [papers]);
+    }, [filteredPapers]);
 
     const paperSpecificGroups = useMemo(() => {
         const groups = {};
-        papers.forEach(p => {
+        filteredPapers.forEach(p => {
             if (p.type.includes('_')) {
                 const [type, num] = p.type.split('_');
                 if (type === 'qp') {
@@ -195,7 +203,7 @@ function App() {
             }
         });
         return groups;
-    }, [papers]);
+    }, [filteredPapers]);
 
     const getSubjectCategory = (name) => {
         const n = name.toLowerCase();
@@ -341,7 +349,7 @@ function App() {
                     <div className="space-y-3">
                         <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold ml-1">About</p>
                         <a
-                            href="https://github.com/fam007e/OandALvl-exam-paper-downloader/tree/dev"
+                            href="https://github.com/fam007e/examquest/tree/dev"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all text-xs group"
@@ -370,7 +378,7 @@ function App() {
                     <div className="relative flex-1 max-w-2xl">
                         <input
                             type="text"
-                            placeholder="Search subjects, codes, or topics..."
+                            placeholder={selectedSubject ? "Search papers, years, series..." : "Search subjects, codes, or topics..."}
                             className="input pl-6 pr-12 py-3.5 rounded-2xl glow-focus"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -578,66 +586,86 @@ function App() {
                                     </div>
                                 ) : (
                                     <div className="space-y-10">
-                                        {Object.entries(groupedPapers).map(([type, group]) => (
-                                            <section key={type} className="space-y-5">
-                                                {/* Section Header */}
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-1.5 h-8 rounded-full ${type === 'qp' ? 'bg-accent-blue' :
-                                                        type === 'ms' ? 'bg-accent-emerald' : 'bg-gray-500'
-                                                        }`} />
-                                                    <h4 className="text-sm font-bold uppercase tracking-[0.25em] text-gray-400">
-                                                        {group.name}
-                                                    </h4>
-                                                    <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-white/5 text-gray-500">
-                                                        {group.papers.length}
-                                                    </span>
-                                                    <div className="flex-1 border-b border-white/5" />
-                                                </div>
+                                        {Object.entries(groupedPapers).length > 0 ? (
+                                            Object.entries(groupedPapers).map(([type, group]) => (
+                                                <section key={type} className="space-y-5">
+                                                    {/* Section Header */}
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`w-1.5 h-8 rounded-full ${type === 'qp' ? 'bg-accent-blue' :
+                                                            type === 'ms' ? 'bg-accent-emerald' : 'bg-gray-500'
+                                                            }`} />
+                                                        <h4 className="text-sm font-bold uppercase tracking-[0.25em] text-gray-400">
+                                                            {group.name}
+                                                        </h4>
+                                                        <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-white/5 text-gray-500">
+                                                            {group.papers.length}
+                                                        </span>
+                                                        <div className="flex-1 border-b border-white/5" />
+                                                    </div>
 
-                                                {/* Papers Grid */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                                    {group.papers.map((paper, idx) => (
-                                                        <motion.div
-                                                            initial={{ opacity: 0, y: 10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            transition={{ delay: idx * 0.02 }}
-                                                            key={paper.url}
-                                                            className="glass rounded-xl p-4 flex items-center justify-between group hover:border-primary/30 transition-all"
-                                                        >
-                                                            <div className="flex items-center gap-4 min-w-0">
-                                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${type === 'qp' ? 'bg-accent-blue/10 text-accent-blue' :
-                                                                    type === 'ms' ? 'bg-accent-emerald/10 text-accent-emerald' :
-                                                                        'bg-gray-500/10 text-gray-400'
-                                                                    }`}>
-                                                                    <FileText size={18} />
+                                                    {/* Papers Grid */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                                        {group.papers.map((paper, idx) => (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                transition={{ delay: idx * 0.02 }}
+                                                                key={paper.url}
+                                                                className="glass rounded-xl p-4 flex items-center justify-between group hover:border-primary/30 transition-all"
+                                                            >
+                                                                <div className="flex items-center gap-4 min-w-0">
+                                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${type === 'qp' ? 'bg-accent-blue/10 text-accent-blue' :
+                                                                        type === 'ms' ? 'bg-accent-emerald/10 text-accent-emerald' :
+                                                                            'bg-gray-500/10 text-gray-400'
+                                                                        }`}>
+                                                                        <FileText size={18} />
+                                                                    </div>
+                                                                    <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">
+                                                                        {paper.name}
+                                                                    </p>
                                                                 </div>
-                                                                <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">
-                                                                    {paper.name}
-                                                                </p>
-                                                            </div>
-                                                            <div className="flex items-center gap-1 shrink-0">
-                                                                <a
-                                                                    href={paper.url}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="p-2.5 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg transition-all"
-                                                                    title="Preview Online"
-                                                                >
-                                                                    <ExternalLink size={16} />
-                                                                </a>
-                                                                <button
-                                                                    onClick={() => downloadPaper(paper)}
-                                                                    className="p-2.5 text-primary hover:bg-primary/10 rounded-lg transition-all"
-                                                                    title="Download"
-                                                                >
-                                                                    <Download size={16} />
-                                                                </button>
-                                                            </div>
-                                                        </motion.div>
-                                                    ))}
+                                                                <div className="flex items-center gap-1 shrink-0">
+                                                                    <a
+                                                                        href={paper.url}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="p-2.5 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                                                                        title="Preview Online"
+                                                                    >
+                                                                        <ExternalLink size={16} />
+                                                                    </a>
+                                                                    <button
+                                                                        onClick={() => downloadPaper(paper)}
+                                                                        className="p-2.5 text-primary hover:bg-primary/10 rounded-lg transition-all"
+                                                                        title="Download"
+                                                                    >
+                                                                        <Download size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </motion.div>
+                                                        ))}
+                                                    </div>
+                                                </section>
+                                            ))
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center py-24 space-y-4">
+                                                <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center">
+                                                    <Search size={32} className="text-gray-700" />
                                                 </div>
-                                            </section>
-                                        ))}
+                                                <div className="text-center space-y-1">
+                                                    <p className="text-gray-400 font-medium">No papers match your search</p>
+                                                    <p className="text-gray-600 text-xs text-center px-4 max-w-xs">
+                                                        Try searching for a different year, series (w, s, m), or paper type (qp, ms)
+                                                    </p>
+                                                    <button
+                                                        onClick={() => setSearchQuery('')}
+                                                        className="mt-4 text-primary text-xs font-bold hover:underline"
+                                                    >
+                                                        Clear Search
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </motion.div>

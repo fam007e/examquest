@@ -2,12 +2,15 @@
 """
 Main FastAPI server for the Exam Paper Downloader.
 Provides API endpoints for fetching boards, levels, subjects, and papers.
+Updated for asynchronous operations and aiohttp session management.
 """
 import os
 import json
 import uuid
-import requests
-from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
+
+import aiohttp
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 import uvicorn
@@ -17,7 +20,14 @@ try:
 except ImportError:
     from scraper_service import ExamScraperService
 
-app = FastAPI(title="Exam Paper Downloader API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage the lifecycle of the aiohttp ClientSession."""
+    async with aiohttp.ClientSession() as session:
+        app.state.session = session
+        yield
+
+app = FastAPI(title="Exam Paper Downloader API", lifespan=lifespan)
 
 # Enable CORS for frontend interaction
 app.add_middleware(
@@ -35,7 +45,10 @@ def load_cache():
     """Load the subject cache from a JSON file."""
     if os.path.exists(CACHE_FILE):
         with open(CACHE_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {}
     return {}
 
 def save_cache(cache):
@@ -75,7 +88,7 @@ async def get_levels(board_id: str):
     return ["International GCSE", "Advanced Level"]
 
 @app.get("/subjects")
-async def get_subjects(source: str, board: str, level: str):
+async def get_subjects(request: Request, source: str, board: str, level: str):
     """Fetch subjects based on source, board, and level."""
     cache = load_cache()
     cache_key = f"{source}_{board}_{level}"
@@ -83,10 +96,11 @@ async def get_subjects(source: str, board: str, level: str):
     if cache_key in cache:
         return cache[cache_key]
 
+    session = request.app.state.session
     if source == 'xtremepapers':
-        subjects = service.get_xtremepapers_subjects(board, level)
+        subjects = await service.get_xtremepapers_subjects(session, board, level)
     else:
-        subjects = service.get_papacambridge_subjects(level)
+        subjects = await service.get_papacambridge_subjects(session, level)
 
     if not subjects:
         raise HTTPException(status_code=404, detail="No subjects found")
@@ -100,9 +114,10 @@ async def get_subjects(source: str, board: str, level: str):
     return subject_list
 
 @app.get("/papers")
-async def get_papers(subject_url: str, board: str, source: str):
+async def get_papers(request: Request, subject_url: str, board: str, source: str):
     """Fetch PDF links for a specific subject."""
-    papers = service.get_pdfs(subject_url, board, source)
+    session = request.app.state.session
+    papers = await service.get_pdfs(session, subject_url, board, source)
     if not papers:
         raise HTTPException(status_code=404, detail="No papers found")
 
@@ -119,35 +134,32 @@ async def get_papers(subject_url: str, board: str, source: str):
     return categorized
 
 @app.get("/download")
-async def download_file(url: str, filename: str):
+async def download_file(request: Request, url: str, filename: str):
     """Download a specific paper."""
+    session = request.app.state.session
     try:
-        path = await service.download_paper(url, filename)
+        path = await service.download_paper(session, url, filename)
         return FileResponse(path, filename=filename)
-    except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/merge")
-async def merge_papers(data: dict):
+async def merge_papers(request: Request, data: dict):
     """Merge multiple papers into a single PDF."""
-    # data format: {"papers": [{"url": "...", "name": "..."}, ...], "output_name": "..."}
+    session = request.app.state.session
     try:
         papers = data.get("papers", [])
         output_name = data.get("output_name", f"merged_{uuid.uuid4().hex[:8]}.pdf")
 
         downloaded_paths = []
         for p in papers:
-            path = await service.download_paper(p["url"], p["name"])
+            path = await service.download_paper(session, p["url"], p["name"])
             downloaded_paths.append(path)
 
         output_path = os.path.join("temp_downloads", output_name)
         service.merge_pdfs(downloaded_paths, output_path)
 
         return FileResponse(output_path, filename=output_name)
-    except (requests.RequestException, IOError) as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
     except Exception as e:  # pylint: disable=broad-exception-caught
         return JSONResponse(status_code=500, content={"error": str(e)})
 

@@ -5,3 +5,4 @@ fastapi>=0.127.0
 uvicorn>=0.34.0
 pypdf>=6.6.0
 python-multipart>=0.0.20
+aiohttp>=3.10.0

@@ -1,4 +1,4 @@
-# Contributing to O and A Level Exam Papers Downloader
+# Contributing to ExamQuest
 
 First off, thank you for considering contributing to this project! It's people like you that make the open-source community such a fantastic place to learn, inspire, and create.
 
