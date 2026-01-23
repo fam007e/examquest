@@ -135,12 +135,15 @@ async def get_papers(request: Request, subject_url: str, board: str, source: str
 @app.get("/download")
 async def download_file(request: Request, url: str, filename: str):
     """Download a specific paper."""
+    if not service._is_trusted_url(url): # pylint: disable=protected-access
+        raise HTTPException(status_code=400, detail="Untrusted URL")
+
     session = request.app.state.session
     try:
-        # Strict sanitization and boundary check via service
-        safe_path = service._get_safe_path(filename)
-        path = await service.download_paper(session, url, os.path.basename(safe_path))
-        return FileResponse(path, filename=os.path.basename(path))
+        # download_paper now uses a hash of the URL for the local filename
+        path = await service.download_paper(session, url, filename)
+        # Use only the sanitized basename for the attachment filename
+        return FileResponse(path, filename=os.path.basename(filename))
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -150,20 +153,22 @@ async def merge_papers(request: Request, data: dict):
     session = request.app.state.session
     try:
         papers = data.get("papers", [])
-        output_name = data.get("output_name", f"merged_{uuid.uuid4().hex[:8]}.pdf")
-        # Strict sanitization via service
-        safe_output_path = service._get_safe_path(output_name)
+        # Generate a purely opaque output name
+        opaque_output_name = f"merged_{uuid.uuid4().hex}.pdf"
+        safe_output_path = service.get_safe_path(opaque_output_name)
 
         downloaded_paths = []
         for p in papers:
-            # Download and get verified safe path
+            if not service._is_trusted_url(p["url"]): # pylint: disable=protected-access
+                continue
             path = await service.download_paper(session, p["url"], p["name"])
             downloaded_paths.append(path)
 
-        # Secure merge results in a verified safe path
-        service.merge_pdfs(downloaded_paths, safe_output_path)
+        if not downloaded_paths:
+            raise HTTPException(status_code=400, detail="No valid papers to merge")
 
-        return FileResponse(safe_output_path, filename=os.path.basename(safe_output_path))
+        service.merge_pdfs(downloaded_paths, safe_output_path)
+        return FileResponse(safe_output_path, filename="merged_papers.pdf")
     except Exception as e:  # pylint: disable=broad-exception-caught
         return JSONResponse(status_code=500, content={"error": str(e)})
 

@@ -5,6 +5,8 @@ Updated to use asynchronous requests with politeness techniques.
 import os
 import re
 import asyncio
+import random
+import hashlib
 import urllib.parse
 from typing import Dict, List
 
@@ -56,17 +58,15 @@ class ExamScraperService:
 
     def _is_trusted_url(self, url: str) -> bool:
         """Verify if the URL belongs to a trusted scraping domain strictly."""
-        try:
-            parsed = urllib.parse.urlparse(url)
-            trusted_domains = {
-                'papers.xtremepape.rs',
-                'pastpapers.papacambridge.com'
-            }
-            return parsed.netloc in trusted_domains
-        except Exception: # pylint: disable=broad-exception-caught
-            return False
+        trusted_prefixes = (
+            'https://papers.xtremepape.rs/',
+            'http://papers.xtremepape.rs/',
+            'https://pastpapers.papacambridge.com/',
+            'http://pastpapers.papacambridge.com/'
+        )
+        return url.startswith(trusted_prefixes)
 
-    def _get_safe_path(self, filename: str) -> str:
+    def get_safe_path(self, filename: str) -> str:
         """Ensure the path is strictly within the temp_downloads directory."""
         base_dir = os.path.abspath('temp_downloads')
         os.makedirs(base_dir, exist_ok=True)
@@ -350,11 +350,15 @@ class ExamScraperService:
         return result
 
     async def download_paper(self, session: aiohttp.ClientSession, url: str, filename: str) -> str:
-        """Download a paper using aiohttp."""
+        """Download a paper securely using a hash for the local path."""
         if not self._is_trusted_url(url):
             raise RuntimeError(f"Untrusted URL blocked: {url}")
 
-        path = self._get_safe_path(filename)
+        # Opaque filename from URL hash to break path injection data flow
+        url_hash = hashlib.sha256(url.encode()).hexdigest()
+        # Preserve .pdf extension if present
+        ext = ".pdf" if url.lower().endswith(".pdf") or filename.lower().endswith(".pdf") else ""
+        path = self.get_safe_path(f"{url_hash}{ext}")
 
         async with self.semaphore:
             timeout = aiohttp.ClientTimeout(total=60)
@@ -370,13 +374,17 @@ class ExamScraperService:
 
     def merge_pdfs(self, file_paths: List[str], output_path: str):
         """Merge multiple PDFs into one securely."""
-        safe_output_path = self._get_safe_path(os.path.basename(output_path))
+        # Ensure output path is safe
+        safe_output_path = self.get_safe_path(os.path.basename(output_path))
         merger = PdfWriter()
+
+        base_dir = os.path.abspath('temp_downloads')
         for pdf in file_paths:
-            # Re-verify each input path is safe before opening
             abs_pdf = os.path.abspath(pdf)
-            base_dir = os.path.abspath('temp_downloads')
+            # Only append if within safe directory and exists
             if os.path.commonpath([base_dir, abs_pdf]) == base_dir and os.path.exists(abs_pdf):
                 merger.append(abs_pdf)
-        merger.write(safe_output_path)
+
+        with open(safe_output_path, 'wb') as f:
+            merger.write(f)
         merger.close()
