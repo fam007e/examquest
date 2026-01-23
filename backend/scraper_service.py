@@ -7,7 +7,6 @@ import re
 import asyncio
 import random
 import hashlib
-import urllib.parse
 from typing import Dict, List
 
 import aiohttp
