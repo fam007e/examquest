@@ -135,14 +135,16 @@ async def get_papers(request: Request, subject_url: str, board: str, source: str
 @app.get("/download")
 async def download_file(request: Request, url: str, filename: str):
     """Download a specific paper."""
-    if not service._is_trusted_url(url): # pylint: disable=protected-access
+    # Strict reconstruction from constant prefix
+    safe_url = service._get_safe_url(url) # pylint: disable=protected-access
+    if not safe_url:
         raise HTTPException(status_code=400, detail="Untrusted URL")
 
     session = request.app.state.session
     try:
-        # download_paper now uses a hash of the URL for the local filename
-        path = await service.download_paper(session, url, filename)
-        # Use only the sanitized basename for the attachment filename
+        # download_paper returns a safe path derived from a hash
+        path = await service.download_paper(session, safe_url, filename)
+        # Use only sanitized basename for attachment
         return FileResponse(path, filename=os.path.basename(filename))
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -153,15 +155,17 @@ async def merge_papers(request: Request, data: dict):
     session = request.app.state.session
     try:
         papers = data.get("papers", [])
-        # Generate a purely opaque output name
+        # Generate an opaque output name
         opaque_output_name = f"merged_{uuid.uuid4().hex}.pdf"
         safe_output_path = service.get_safe_path(opaque_output_name)
 
         downloaded_paths = []
         for p in papers:
-            if not service._is_trusted_url(p["url"]): # pylint: disable=protected-access
+            p_url = p.get("url", "")
+            safe_p_url = service._get_safe_url(p_url) # pylint: disable=protected-access
+            if not safe_p_url:
                 continue
-            path = await service.download_paper(session, p["url"], p["name"])
+            path = await service.download_paper(session, safe_p_url, p.get("name", "paper.pdf"))
             downloaded_paths.append(path)
 
         if not downloaded_paths:
