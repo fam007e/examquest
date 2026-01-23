@@ -1,0 +1,80 @@
+name: "CodeQL"
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - "**.sh"
+      - ".github/workflows/**"
+      - "**.md"
+  pull_request:
+    branches: ["main", "master", "develop"]
+  schedule:
+    # Run weekly on Saturday at 09:27 UTC
+    - cron: '27 9 * * 6'
+  workflow_dispatch:
+
+# Avoid running multiple instances
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 60 }}
+
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # GitHub Actions workflow analysis
+          - language: actions
+            build-mode: none
+
+          # Javascript analysis
+          - language: javascript-typescript
+            build-mode: none
+
+          # Python analysis
+          - language: python
+            build-mode: none
+
+          # C/C++ analysis with autobuild
+          # (Including as per user snippet, though project is primarily Python/JS)
+          - language: c-cpp
+            build-mode: manual
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Initialize CodeQL
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      # Autobuild for languages that require it
+      - name: Autobuild
+        if: matrix.build-mode == 'manual'
+        uses: github/codeql-action/autobuild@v3
+
+      # Perform CodeQL analysis
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        if: always()
+        with:
+          category: "/language:${{ matrix.language }}"
+          output: sarif-results
+          upload: always
