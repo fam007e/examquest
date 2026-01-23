@@ -137,8 +137,10 @@ async def download_file(request: Request, url: str, filename: str):
     """Download a specific paper."""
     session = request.app.state.session
     try:
-        path = await service.download_paper(session, url, filename)
-        return FileResponse(path, filename=filename)
+        # Sanitize filename
+        safe_filename = os.path.basename(filename)
+        path = await service.download_paper(session, url, safe_filename)
+        return FileResponse(path, filename=safe_filename)
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -149,16 +151,20 @@ async def merge_papers(request: Request, data: dict):
     try:
         papers = data.get("papers", [])
         output_name = data.get("output_name", f"merged_{uuid.uuid4().hex[:8]}.pdf")
+        # Sanitize output name
+        safe_output_name = os.path.basename(output_name)
 
         downloaded_paths = []
         for p in papers:
-            path = await service.download_paper(session, p["url"], p["name"])
+            # Sanitize each paper name
+            safe_p_name = os.path.basename(p["name"])
+            path = await service.download_paper(session, p["url"], safe_p_name)
             downloaded_paths.append(path)
 
-        output_path = os.path.join("temp_downloads", output_name)
+        output_path = os.path.join("temp_downloads", safe_output_name)
         service.merge_pdfs(downloaded_paths, output_path)
 
-        return FileResponse(output_path, filename=output_name)
+        return FileResponse(output_path, filename=safe_output_name)
     except Exception as e:  # pylint: disable=broad-exception-caught
         return JSONResponse(status_code=500, content={"error": str(e)})
 

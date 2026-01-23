@@ -54,8 +54,20 @@ class ExamScraperService:
             'Referer': 'https://www.google.com/',
         }
 
+    def _is_trusted_url(self, url: str) -> bool:
+        """Verify if the URL belongs to a trusted scraping domain."""
+        trusted_domains = [
+            'papers.xtremepape.rs',
+            'pastpapers.papacambridge.com'
+        ]
+        return any(domain in url for domain in trusted_domains)
+
     async def _fetch_html(self, session: aiohttp.ClientSession, url: str) -> str:
         """Wrapper for aiohttp GET requests with semaphore and jitter."""
+        if not self._is_trusted_url(url):
+            print(f"Untrusted URL blocked: {url}")
+            return ""
+
         async with self.semaphore:
             # Random jitter between 0.2 and 1.0 seconds
             await asyncio.sleep(random.uniform(0.2, 1.0))
@@ -321,8 +333,13 @@ class ExamScraperService:
 
     async def download_paper(self, session: aiohttp.ClientSession, url: str, filename: str) -> str:
         """Download a paper using aiohttp."""
+        if not self._is_trusted_url(url):
+            raise RuntimeError(f"Untrusted URL blocked: {url}")
+
         os.makedirs('temp_downloads', exist_ok=True)
-        path = os.path.join('temp_downloads', filename)
+        # Sanitize filename to prevent path injection
+        safe_filename = os.path.basename(filename)
+        path = os.path.join('temp_downloads', safe_filename)
 
         async with self.semaphore:
             timeout = aiohttp.ClientTimeout(total=60)
