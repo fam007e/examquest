@@ -389,10 +389,10 @@ class ExamScraperService:
 
         base_dir = os.path.abspath('temp_downloads')
         for pdf in file_paths:
-            abs_pdf = os.path.abspath(pdf)
-            # Only append if within safe directory and exists
-            if os.path.commonpath([base_dir, abs_pdf]) == base_dir and os.path.exists(abs_pdf):
-                merger.append(abs_pdf)
+            # Strong sanitization for CodeQL: only use basename
+            safe_pdf_path = os.path.join(base_dir, os.path.basename(pdf))
+            if os.path.exists(safe_pdf_path):
+                merger.append(safe_pdf_path)
 
         with open(safe_output_path, 'wb') as f:
             merger.write(f)
