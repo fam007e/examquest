@@ -16,7 +16,7 @@ setup(
     description='A premium full-stack platform for downloading CAIE and Edexcel exam papers.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/fam007e/OandALvl-exam-paper-downloader',
+    url='https://github.com/fam007e/examquest',
     author='Faisal Ahmed Moshiur',
     author_email='faisalmoshiur+gitpy@gmail.com',
     license='MIT',
