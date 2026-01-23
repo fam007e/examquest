@@ -1,4 +1,3 @@
-# pylint: disable=import-error
 """
 Main FastAPI server for the Exam Paper Downloader.
 Provides API endpoints for fetching boards, levels, subjects, and papers.
@@ -21,10 +20,10 @@ except ImportError:
     from scraper_service import ExamScraperService
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(fastapi_app: FastAPI):
     """Manage the lifecycle of the aiohttp ClientSession."""
     async with aiohttp.ClientSession() as session:
-        app.state.session = session
+        fastapi_app.state.session = session
         yield
 
 app = FastAPI(title="Exam Paper Downloader API", lifespan=lifespan)
@@ -136,10 +135,17 @@ async def get_papers(request: Request, subject_url: str, board: str, source: str
 @app.get("/download")
 async def download_file(request: Request, url: str, filename: str):
     """Download a specific paper."""
+    # Strict reconstruction from constant prefix
+    safe_url = service._get_safe_url(url) # pylint: disable=protected-access
+    if not safe_url:
+        raise HTTPException(status_code=400, detail="Untrusted URL")
+
     session = request.app.state.session
     try:
-        path = await service.download_paper(session, url, filename)
-        return FileResponse(path, filename=filename)
+        # download_paper returns a safe path derived from a hash
+        path = await service.download_paper(session, safe_url, filename)
+        # Use only sanitized basename for attachment
+        return FileResponse(path, filename=os.path.basename(filename))
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -149,17 +155,24 @@ async def merge_papers(request: Request, data: dict):
     session = request.app.state.session
     try:
         papers = data.get("papers", [])
-        output_name = data.get("output_name", f"merged_{uuid.uuid4().hex[:8]}.pdf")
+        # Generate an opaque output name
+        opaque_output_name = f"merged_{uuid.uuid4().hex}.pdf"
+        safe_output_path = service.get_safe_path(opaque_output_name)
 
         downloaded_paths = []
         for p in papers:
-            path = await service.download_paper(session, p["url"], p["name"])
+            p_url = p.get("url", "")
+            safe_p_url = service._get_safe_url(p_url) # pylint: disable=protected-access
+            if not safe_p_url:
+                continue
+            path = await service.download_paper(session, safe_p_url, p.get("name", "paper.pdf"))
             downloaded_paths.append(path)
 
-        output_path = os.path.join("temp_downloads", output_name)
-        service.merge_pdfs(downloaded_paths, output_path)
+        if not downloaded_paths:
+            raise HTTPException(status_code=400, detail="No valid papers to merge")
 
-        return FileResponse(output_path, filename=output_name)
+        service.merge_pdfs(downloaded_paths, safe_output_path)
+        return FileResponse(safe_output_path, filename="merged_papers.pdf")
     except Exception as e:  # pylint: disable=broad-exception-caught
         return JSONResponse(status_code=500, content={"error": str(e)})
 
