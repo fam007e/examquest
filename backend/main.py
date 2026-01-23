@@ -137,10 +137,10 @@ async def download_file(request: Request, url: str, filename: str):
     """Download a specific paper."""
     session = request.app.state.session
     try:
-        # Sanitize filename
-        safe_filename = os.path.basename(filename)
-        path = await service.download_paper(session, url, safe_filename)
-        return FileResponse(path, filename=safe_filename)
+        # Strict sanitization and boundary check via service
+        safe_path = service._get_safe_path(filename)
+        path = await service.download_paper(session, url, os.path.basename(safe_path))
+        return FileResponse(path, filename=os.path.basename(path))
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -151,20 +151,19 @@ async def merge_papers(request: Request, data: dict):
     try:
         papers = data.get("papers", [])
         output_name = data.get("output_name", f"merged_{uuid.uuid4().hex[:8]}.pdf")
-        # Sanitize output name
-        safe_output_name = os.path.basename(output_name)
+        # Strict sanitization via service
+        safe_output_path = service._get_safe_path(output_name)
 
         downloaded_paths = []
         for p in papers:
-            # Sanitize each paper name
-            safe_p_name = os.path.basename(p["name"])
-            path = await service.download_paper(session, p["url"], safe_p_name)
+            # Download and get verified safe path
+            path = await service.download_paper(session, p["url"], p["name"])
             downloaded_paths.append(path)
 
-        output_path = os.path.join("temp_downloads", safe_output_name)
-        service.merge_pdfs(downloaded_paths, output_path)
+        # Secure merge results in a verified safe path
+        service.merge_pdfs(downloaded_paths, safe_output_path)
 
-        return FileResponse(output_path, filename=safe_output_name)
+        return FileResponse(safe_output_path, filename=os.path.basename(safe_output_path))
     except Exception as e:  # pylint: disable=broad-exception-caught
         return JSONResponse(status_code=500, content={"error": str(e)})
 
