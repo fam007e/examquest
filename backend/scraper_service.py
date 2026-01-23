@@ -7,11 +7,9 @@ import os
 import re
 import asyncio
 import random
-import time
 from typing import Dict, List
 
 import aiohttp
-import requests
 from bs4 import BeautifulSoup
 from pypdf import PdfWriter
 
@@ -21,16 +19,26 @@ class ExamScraperService:
     BASE_URL = 'https://papers.xtremepape.rs/'
 
     USER_AGENTS = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPad; CPU OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0.6099.101 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) '
+        'Gecko/20100101 Firefox/121.0',
+        'Mozilla/5.0 (X11; Linux x86_64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) '
+        'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (iPad; CPU OS 17_2 like Mac OS X) '
+        'AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0.6099.101 '
+        'Mobile/15E148 Safari/604.1',
         'Mozilla/5.0 (Android 14; Mobile; rv:121.0) Gecko/121.0 Firefox/121.0',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 OPR/104.0.0.0',
-        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 OPR/104.0.0.0',
+        'Mozilla/5.0 (Linux; Android 10; K) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
     ]
 
     def __init__(self):
@@ -54,16 +62,20 @@ class ExamScraperService:
             await asyncio.sleep(random.uniform(0.2, 1.0))
 
             try:
-                async with session.get(url, headers=self._get_headers(), timeout=aiohttp.ClientTimeout(total=15)) as response:
+                timeout = aiohttp.ClientTimeout(total=15)
+                async with session.get(url, headers=self._get_headers(),
+                                     timeout=timeout) as response:
                     if response.status == 200:
                         return await response.text()
                     print(f"Failed to fetch {url}: Status {response.status}")
                     return ""
-            except Exception as e:
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 print(f"Request error for {url}: {e}")
                 return ""
 
-    async def get_xtremepapers_subjects(self, session: aiohttp.ClientSession, exam_board: str, exam_level: str) -> Dict[str, str]:
+    async def get_xtremepapers_subjects(self, session: aiohttp.ClientSession,
+                                        exam_board: str,
+                                        exam_level: str) -> Dict[str, str]:
         """Fetch subjects for the selected exam board and level from xtremepapers."""
         level_for_url = exam_level.replace(' ', '+')
         url = f'{self.BASE_URL}index.php?dirpath=./{exam_board}/{level_for_url}/&order=0'
@@ -82,7 +94,8 @@ class ExamScraperService:
                 subjects[subject_name] = self.BASE_URL + link['href']
         return subjects
 
-    async def get_papacambridge_subjects(self, session: aiohttp.ClientSession, exam_level: str) -> Dict[str, str]:
+    async def get_papacambridge_subjects(self, session: aiohttp.ClientSession,
+                                         exam_level: str) -> Dict[str, str]:
         """Fetch subjects from papacambridge."""
         level_map = {
             'O Level': 'o-level',
@@ -95,7 +108,9 @@ class ExamScraperService:
         if not level_slug:
             return {}
 
-        url = f'https://pastpapers.papacambridge.com/papers/caie/{level_slug}'
+        url = (
+            f'https://pastpapers.papacambridge.com/papers/caie/{level_slug}'
+        )
         html = await self._fetch_html(session, url)
         if not html:
             return {}
@@ -125,7 +140,8 @@ class ExamScraperService:
             subjects[name] = url
         return subjects
 
-    async def get_pdfs(self, session: aiohttp.ClientSession, subject_url: str, exam_board: str, source: str) -> Dict[str, str]:
+    async def get_pdfs(self, session: aiohttp.ClientSession, subject_url: str,
+                       exam_board: str, source: str) -> Dict[str, str]:
         """Fetch PDF links for the selected subject."""
         if source == 'papacambridge':
             return await self._get_papacambridge_pdfs(session, subject_url)
@@ -141,7 +157,8 @@ class ExamScraperService:
         pdf_links = soup.find_all('a', class_='file', href=re.compile(r'\.pdf$'))
         return {link.text.strip(): self.BASE_URL + link['href'] for link in pdf_links}
 
-    async def _get_edexcel_pdfs(self, session: aiohttp.ClientSession, subject_url: str) -> Dict[str, str]:
+    async def _get_edexcel_pdfs(self, session: aiohttp.ClientSession,
+                                subject_url: str) -> Dict[str, str]:
         """Fetch PDF links for Edexcel subjects from xtremepapers."""
         html = await self._fetch_html(session, subject_url)
         if not html:
@@ -154,7 +171,9 @@ class ExamScraperService:
         for year_link in year_links:
             if year_link.text.strip('[]') != '..':
                 year_url = self.BASE_URL + year_link['href']
-                tasks.append(self._get_edexcel_year_details(session, year_url))
+                tasks.append(
+                    self._get_edexcel_year_details(session, year_url)
+                )
 
         results = await asyncio.gather(*tasks)
 
@@ -163,7 +182,8 @@ class ExamScraperService:
             all_pdfs.update(r)
         return all_pdfs
 
-    async def _get_edexcel_year_details(self, session: aiohttp.ClientSession, year_url: str) -> Dict[str, str]:
+    async def _get_edexcel_year_details(self, session: aiohttp.ClientSession,
+                                        year_url: str) -> Dict[str, str]:
         """Helper to fetch PDFs from an Edexcel year and its subdirectories."""
         pdfs = await self._get_pdfs_from_xtremepapers_page(session, year_url)
 
@@ -178,7 +198,9 @@ class ExamScraperService:
             sub_link = soup.find('a', class_='directory', string=sub_dir_name)
             if sub_link:
                 sub_url = self.BASE_URL + sub_link['href']
-                sub_tasks.append(self._get_pdfs_from_xtremepapers_page(session, sub_url))
+                sub_tasks.append(
+                    self._get_pdfs_from_xtremepapers_page(session, sub_url)
+                )
 
         if sub_tasks:
             sub_results = await asyncio.gather(*sub_tasks)
@@ -187,7 +209,8 @@ class ExamScraperService:
 
         return pdfs
 
-    async def _get_pdfs_from_xtremepapers_page(self, session: aiohttp.ClientSession, url: str) -> Dict[str, str]:
+    async def _get_pdfs_from_xtremepapers_page(self, session: aiohttp.ClientSession,
+                                               url: str) -> Dict[str, str]:
         """Fetch all PDF links from a specific xtremepapers page."""
         html = await self._fetch_html(session, url)
         if not html:
@@ -197,7 +220,8 @@ class ExamScraperService:
         pdf_links = soup.find_all('a', class_='file', href=re.compile(r'\.pdf$'))
         return {link.text.strip(): self.BASE_URL + link['href'] for link in pdf_links}
 
-    async def _get_papacambridge_pdfs(self, session: aiohttp.ClientSession, subject_url: str) -> Dict[str, str]:
+    async def _get_papacambridge_pdfs(self, session: aiohttp.ClientSession,
+                                      subject_url: str) -> Dict[str, str]:
         """Fetch PDF links from papacambridge."""
         html = await self._fetch_html(session, subject_url)
         if not html:
@@ -210,7 +234,10 @@ class ExamScraperService:
         if folders and not pdf_items:
             # Parallel fetch years
             years = self._get_papacambridge_years_internal(soup)
-            tasks = [self._get_papacambridge_session_pdfs(session, y_url) for y_url in years.values()]
+            tasks = [
+                self._get_papacambridge_session_pdfs(session, y_url)
+                for y_url in years.values()
+            ]
             results = await asyncio.gather(*tasks)
 
             all_pdfs = {}
@@ -223,7 +250,8 @@ class ExamScraperService:
     def _get_papacambridge_years_internal(self, soup: BeautifulSoup) -> Dict[str, str]:
         """Internal helper to parse year links from local soup."""
         years = {}
-        year_items = soup.find_all('div', class_='kt-widget4__item item-folder-type')
+        year_items = soup.find_all('div',
+                                   class_='kt-widget4__item item-folder-type')
         for item in year_items:
             if 'adsbygoogle' in item.get('class', []):
                 continue
@@ -244,7 +272,8 @@ class ExamScraperService:
             years[name] = year_url
         return years
 
-    async def _get_papacambridge_session_pdfs(self, session: aiohttp.ClientSession, session_url: str) -> Dict[str, str]:
+    async def _get_papacambridge_session_pdfs(self, session: aiohttp.ClientSession,
+                                              session_url: str) -> Dict[str, str]:
         """Fetch PDF links from a Papacambridge session page."""
         html = await self._fetch_html(session, session_url)
         if not html:
@@ -255,7 +284,8 @@ class ExamScraperService:
         pdf_items = soup.find_all('div', class_='kt-widget4__item item-pdf-type')
         for item in pdf_items:
             dl_pattern = r'download_file\.php\?files=.*\.pdf'
-            download_link = item.find('a', href=re.compile(dl_pattern))
+            download_link = item.find('a',
+                                      href=re.compile(dl_pattern))
             if download_link:
                 match = re.search(r'files=(.*\.pdf)', download_link['href'])
                 if match:
@@ -296,14 +326,16 @@ class ExamScraperService:
         path = os.path.join('temp_downloads', filename)
 
         async with self.semaphore:
-            async with session.get(url, headers=self._get_headers(), timeout=aiohttp.ClientTimeout(total=60)) as response:
+            timeout = aiohttp.ClientTimeout(total=60)
+            async with session.get(url, headers=self._get_headers(),
+                                 timeout=timeout) as response:
                 if response.status == 200:
                     with open(path, 'wb') as f:
                         async for chunk in response.content.iter_chunked(8192):
                             f.write(chunk)
                     return path
-                else:
-                    raise Exception(f"Failed to download {filename}: Status {response.status}")
+
+                raise RuntimeError(f"Failed to download {filename}: Status {response.status}")
 
     def merge_pdfs(self, file_paths: List[str], output_path: str):
         """Merge multiple PDFs into one. (CPU intensive, not IO)"""

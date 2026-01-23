@@ -21,10 +21,10 @@ except ImportError:
     from scraper_service import ExamScraperService
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(fastapi_app: FastAPI):
     """Manage the lifecycle of the aiohttp ClientSession."""
     async with aiohttp.ClientSession() as session:
-        app.state.session = session
+        fastapi_app.state.session = session
         yield
 
 app = FastAPI(title="Exam Paper Downloader API", lifespan=lifespan)

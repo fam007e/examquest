@@ -4,8 +4,8 @@ for CAIE and Edexcel boards and organizes them into directories based on the
 exam board and subject.
 """
 import os
-import time
 import asyncio
+import aiohttp
 from backend.scraper_service import ExamScraperService
 
 service = ExamScraperService()
@@ -57,15 +57,15 @@ def print_subjects_in_columns(subjects):
         row = subject_list[i:i + num_columns]
         print("  ".join(item.ljust(max_width) for item in row))
 
-def get_exam_info():
+async def get_exam_info(session: aiohttp.ClientSession):
     """Get exam board, source and level information."""
     exam_board, source = get_exam_board()
     exam_level = get_exam_level(exam_board)
 
     if source == 'xtremepapers':
-        subjects = service.get_xtremepapers_subjects(exam_board, exam_level)
+        subjects = await service.get_xtremepapers_subjects(session, exam_board, exam_level)
     else:  # papacambridge
-        subjects = service.get_papacambridge_subjects(exam_level)
+        subjects = await service.get_papacambridge_subjects(session, exam_level)
 
     if not subjects:
         print("No subjects found. Exiting...")
@@ -78,11 +78,11 @@ def get_exam_info():
         'subjects': subjects
     }
 
-async def download_pdf_to_dir(url, filename, subject_dir, exam_board):
+async def download_pdf_to_dir(session, url, filename, subject_dir, exam_board):
     """Refactored download helper for CLI."""
     try:
         # We reuse the logic but save it to the desired directory structure
-        temp_path = await service.download_paper(url, filename)
+        temp_path = await service.download_paper(session, url, filename)
         subdir = service.categorize_pdf(filename, exam_board)
         dir_path = os.path.join(subject_dir, subdir)
         os.makedirs(dir_path, exist_ok=True)
@@ -94,21 +94,21 @@ async def download_pdf_to_dir(url, filename, subject_dir, exam_board):
         print(f"Error downloading {filename}: {e}")
         return False
 
-async def download_selected_pdfs(subject, pdfs, subject_dir, exam_board):
+async def download_selected_pdfs(session, subject, pdfs, subject_dir, exam_board):
     """Download PDFs for a selected subject."""
     successful_downloads = 0
     total_pdfs = len(pdfs)
 
     for filename, pdf_url in pdfs.items():
-        if await download_pdf_to_dir(pdf_url, filename, subject_dir, exam_board):
+        if await download_pdf_to_dir(session, pdf_url, filename, subject_dir, exam_board):
             successful_downloads += 1
-        time.sleep(0.5)
+        await asyncio.sleep(0.5)
 
     print(f"\nCompleted {subject}: {successful_downloads} out of {total_pdfs} "
           f"files downloaded successfully")
     return successful_downloads
 
-async def process_subjects(exam_info):
+async def process_subjects(session, exam_info):
     """Process selected subjects and download papers."""
     if not exam_info:
         return
@@ -138,7 +138,7 @@ async def process_subjects(exam_info):
         subject_url = subjects[subject]
         print(f"\nProcessing {subject}...")
 
-        pdfs = service.get_pdfs(subject_url, exam_board, source)
+        pdfs = await service.get_pdfs(session, subject_url, exam_board, source)
         if not pdfs:
             print(f"No PDFs found for {subject}")
             continue
@@ -150,12 +150,13 @@ async def process_subjects(exam_info):
         )
 
         os.makedirs(subject_dir, exist_ok=True)
-        await download_selected_pdfs(subject, pdfs, subject_dir, exam_board)
+        await download_selected_pdfs(session, subject, pdfs, subject_dir, exam_board)
 
 async def main_async():
     """Main async function to run the script."""
-    exam_info = get_exam_info()
-    await process_subjects(exam_info)
+    async with aiohttp.ClientSession() as session:
+        exam_info = await get_exam_info(session)
+        await process_subjects(session, exam_info)
 
 def main():
     """Entry point for the script."""
