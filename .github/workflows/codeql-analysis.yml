@@ -35,10 +35,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # GitHub Actions workflow analysis
-          - language: actions
-            build-mode: none
-
           # Javascript analysis
           - language: javascript-typescript
             build-mode: none
@@ -46,11 +42,6 @@ jobs:
           # Python analysis
           - language: python
             build-mode: none
-
-          # C/C++ analysis with autobuild
-          # (Including as per user snippet, though project is primarily Python/JS)
-          - language: c-cpp
-            build-mode: manual
 
     steps:
       - name: Checkout repository
