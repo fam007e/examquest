@@ -1,4 +1,3 @@
-# pylint: disable=import-error
 """
 Service for scraping exam papers from xtremepapers and papacambridge.
 Updated to use asynchronous requests with politeness techniques.

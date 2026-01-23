@@ -1,4 +1,3 @@
-# pylint: disable=import-error
 """
 Main FastAPI server for the Exam Paper Downloader.
 Provides API endpoints for fetching boards, levels, subjects, and papers.
