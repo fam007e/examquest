@@ -1,11 +1,11 @@
 # ExamQuest: Interactive O & A Level Paper Downloader
 
-[![Build Status](https://img.shields.io/badge/Build-Success-brightgreen)](https://github.com/fam007e/OandALvl-exam-paper-downloader)
+[![Build Status](https://img.shields.io/badge/Build-Success-brightgreen)](https://github.com/fam007e/examquest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![React 18](https://img.shields.io/badge/React-18-61DAFB)](https://reactjs.org/)
 
-**ExamQuest** is a high-performance, full-stack platform designed for the modern-day student. It streamlines the retrieval of past exam papers for Cambridge (CAIE) and Edexcel boards through a stunning, interactive web dashboard. With real-time filtering, automated merging, and a premium UI, it transforms the tedious process of finding papers into a seamless experience.
+**ExamQuest** is a high-performance, asynchronous platform designed for the modern-day student. It streamlines the retrieval of past exam papers for Cambridge (CAIE) and Edexcel boards through a stunning, interactive web dashboard. With context-aware filtering, parallelized scraping, and automated merging, it transforms the tedious process of finding papers into a seamless experience.
 
 ---
 
@@ -14,7 +14,7 @@
 ### 💻 Modern Web Dashboard
 - **Luxury UI**: Multi-layered glassmorphism and smooth animations.
 - **Specialized Icons**: Handcrafted SVGs for major subjects (Physics, Chemistry, Math, etc.).
-- **Global Search**: Instantly find subjects by name or code across all boards.
+- **Context-Aware Search**: Instantly find subjects by name or code, or search for specific papers, years, and mark schemes within a subject.
 - **Favorites**: Star your most-used subjects for instant access.
 - **Mass Download & Merge**: Download multiple years at once or merge them into a single PDF with one click.
 
@@ -50,8 +50,8 @@ The fastest way to get started is using the integrated runner script:
 
 1. **Clone the repo**:
    ```bash
-   git clone https://github.com/fam007e/OandALvl-exam-paper-downloader.git
-   cd OandALvl-exam-paper-downloader
+   git clone https://github.com/fam007e/examquest.git
+   cd examquest
    ```
 
 2. **Run the Interactive Dashboard (Web)**:
@@ -94,4 +94,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🎓 Note
 
-Please use this tool responsibly. Respect the source websites (Xtremepapers and Papacambridge) by avoiding excessive request volume. This tool is designed for educational purposes only.
+Please use this tool responsibly. The backend uses asynchronous requests with built-in "politeness" features (rate-limiting, jitter, and User-Agent rotation) to avoid overwhelming source websites. Respect Xtremepapers and Papacambridge; this tool is designed for educational purposes only.

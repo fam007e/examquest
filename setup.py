@@ -1,5 +1,4 @@
 """Script to install exam papers downloader."""
-# pylint: disable=import-error
 import os
 from setuptools import setup, find_packages
 
@@ -16,7 +15,7 @@ setup(
     description='A premium full-stack platform for downloading CAIE and Edexcel exam papers.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/fam007e/OandALvl-exam-paper-downloader',
+    url='https://github.com/fam007e/examquest',
     author='Faisal Ahmed Moshiur',
     author_email='faisalmoshiur+gitpy@gmail.com',
     license='MIT',
@@ -24,6 +23,9 @@ setup(
     install_requires=[
         'requests>=2.25.1',
         'beautifulsoup4>=4.9.3',
+        'aiohttp>=3.8.1',
+        'fastapi>=0.127.0',
+        'uvicorn>=0.35.0',
     ],
     entry_points={
         'console_scripts': [
