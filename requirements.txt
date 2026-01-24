@@ -7,3 +7,4 @@ pypdf>=6.6.0
 python-multipart>=0.0.20
 aiohttp>=3.10.0
 pylint>=3.0.0
+setuptools>=80.7.1

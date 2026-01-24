@@ -21,11 +21,14 @@ setup(
     license='MIT',
     packages=find_packages(),
     install_requires=[
-        'requests>=2.25.1',
-        'beautifulsoup4>=4.9.3',
-        'aiohttp>=3.8.1',
+        'requests>=2.32.3',
+        'beautifulsoup4>=4.13.0',
+        'aiohttp>=3.10.0',
         'fastapi>=0.127.0',
         'uvicorn>=0.35.0',
+        'pypdf>=6.6.0',
+        'python-multipart>=0.0.20',
+        'urllib3>=2.6.3',
     ],
     entry_points={
         'console_scripts': [
@@ -41,5 +44,5 @@ setup(
         'Topic :: Utilities',
     ],
     keywords='education, exams, cambridge, edexcel, igcse, a-level, papacambridge, xtremepapers',
-    python_requires='>=3.6',
+    python_requires='>=3.10',
 )

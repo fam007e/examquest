@@ -6,6 +6,7 @@ Updated for asynchronous operations and aiohttp session management.
 import os
 import json
 import uuid
+import logging
 from contextlib import asynccontextmanager
 
 import aiohttp
@@ -18,6 +19,10 @@ try:
     from backend.scraper_service import ExamScraperService
 except ImportError:
     from scraper_service import ExamScraperService
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
@@ -147,7 +152,8 @@ async def download_file(request: Request, url: str, filename: str):
         # Use only sanitized basename for attachment
         return FileResponse(path, filename=os.path.basename(filename))
     except Exception as e:  # pylint: disable=broad-exception-caught
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Download failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 @app.post("/merge")
 async def merge_papers(request: Request, data: dict):
@@ -174,7 +180,8 @@ async def merge_papers(request: Request, data: dict):
         service.merge_pdfs(downloaded_paths, safe_output_path)
         return FileResponse(safe_output_path, filename="merged_papers.pdf")
     except Exception as e:  # pylint: disable=broad-exception-caught
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        logger.error("Merge failed: %s", e, exc_info=True)
+        return JSONResponse(status_code=500, content={"error": "An internal error has occurred!"})
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
