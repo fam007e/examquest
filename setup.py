@@ -26,8 +26,8 @@ setup(
         'aiohttp>=3.10.0',
         'fastapi>=0.127.0',
         'uvicorn>=0.35.0',
-        'pypdf>=6.6.0',
-        'python-multipart>=0.0.20',
+        'pypdf>=6.6.2',
+        'python-multipart>=0.0.22',
         'urllib3>=2.6.3',
     ],
     entry_points={
