@@ -1,15 +1,11 @@
 # ExamQuest: Interactive O & A Level Paper Downloader
 
-[![Build Status](https://img.shields.io/badge/Build-Success-brightgreen)](https://github.com/fam007e/examquest/tree/dev)
+[![Build Status](https://img.shields.io/badge/Build-Success-brightgreen)](https://github.com/fam007e/examquest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![React 19](https://img.shields.io/badge/React-19-61DAFB)](https://react.dev/)
+[![React 18](https://img.shields.io/badge/React-18-61DAFB)](https://reactjs.org/)
 
-> [!IMPORTANT]
-> **Branch: `dev` (Cutting Edge)**
-> This branch contains the latest modernization efforts (React 19, Vite 7, Tailwind v4). For the stable, Termux-compatible version, see the [main branch](https://github.com/fam007e/examquest/tree/main).
-
-**ExamQuest** is a high-performance, asynchronous platform designed for the modern-day student. It streamlines the retrieval of past exam papers for Cambridge (CAIE) and Edexcel boards through a stunning, interactive web dashboard. With context-aware filtering, parallelized scraping, automated merging, and a premium UI, it transforms the tedious process of finding papers into a seamless experience.
+**ExamQuest** is a high-performance, asynchronous platform designed for the modern-day student. It streamlines the retrieval of past exam papers for Cambridge (CAIE) and Edexcel boards through a stunning, interactive web dashboard. With context-aware filtering, parallelized scraping, and automated merging, it transforms the tedious process of finding papers into a seamless experience.
 
 ---
 

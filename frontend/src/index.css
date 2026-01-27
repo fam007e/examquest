@@ -1,9 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Custom theme configuration for Tailwind v4 */
-@theme {
+:root {
   /* Colors */
   --color-primary: #6366f1;
   --color-primary-dark: #4f46e5;
