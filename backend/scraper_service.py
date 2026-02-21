@@ -322,15 +322,26 @@ class ExamScraperService:
         pdfs = {}
         pdf_items = soup.find_all('div', class_='kt-widget4__item item-pdf-type')
         for item in pdf_items:
+            # Try finding download_file.php link first
             dl_pattern = r'download_file\.php\?files=.*\.pdf'
-            download_link = item.find('a',
-                                      href=re.compile(dl_pattern))
+            download_link = item.find('a', href=re.compile(dl_pattern))
+
+            pdf_url = ""
             if download_link:
                 match = re.search(r'files=(.*\.pdf)', download_link['href'])
                 if match:
                     pdf_url = match.group(1)
-                    filename = os.path.basename(pdf_url)
-                    pdfs[filename] = pdf_url
+            else:
+                # Look for direct PDF links
+                direct_link = item.find('a', href=re.compile(r'\.pdf$'))
+                if direct_link:
+                    pdf_url = direct_link['href']
+
+            if pdf_url:
+                if not pdf_url.startswith('http'):
+                    pdf_url = 'https://pastpapers.papacambridge.com/' + pdf_url
+                filename = os.path.basename(pdf_url)
+                pdfs[filename] = pdf_url
         return pdfs
 
     def categorize_pdf(self, filename: str, exam_board: str) -> str:
