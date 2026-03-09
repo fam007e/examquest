@@ -24,7 +24,7 @@ setup(
         "aiohttp>=3.10.0",
         "fastapi>=0.127.0",
         "uvicorn>=0.35.0",
-        "pypdf>=6.7.1",
+        "pypdf>=6.7.5",
         "python-multipart>=0.0.22",
         "urllib3>=2.6.3",
     ],
