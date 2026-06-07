@@ -44,9 +44,13 @@ jobs:
           COMMIT_URL: ${{ github.event.head_commit.url }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          CONTENT="🚀 **Push Event** in \`$REPOSITORY\` by **$ACTOR**\n\nBranch: \`$REF_NAME\`\nCommit: [\`$SHA\`]($COMMIT_URL)"
+          CONTENT=$(printf '%b' \
+            "\U0001F680 **Push Event** in \`${REPOSITORY}\` by **${ACTOR}**\n" \
+            "\n" \
+            "Branch: \`${REF_NAME}\`\n" \
+            "Commit: [\`${SHA}\`](${COMMIT_URL})")
           PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
-          curl -X POST \
+          curl -sfS -X POST \
                -H "Content-Type: application/json" \
                -d "$PAYLOAD" \
                "$DISCORD_WEBHOOK_URL"
@@ -62,9 +66,13 @@ jobs:
           ACTOR: ${{ github.actor }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          CONTENT="📋 **Pull Request ${ACTION^}** in \`$REPOSITORY\` by **$ACTOR**\n\n[#$PR_NUMBER: $PR_TITLE]($PR_URL)"
+          LABEL="${ACTION^}"
+          CONTENT=$(printf '%b' \
+            "\U0001F4CB **Pull Request ${LABEL}** in \`${REPOSITORY}\` by **${ACTOR}**\n" \
+            "\n" \
+            "[#${PR_NUMBER}: ${PR_TITLE}](${PR_URL})")
           PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
-          curl -X POST \
+          curl -sfS -X POST \
                -H "Content-Type: application/json" \
                -d "$PAYLOAD" \
                "$DISCORD_WEBHOOK_URL"
@@ -80,9 +88,13 @@ jobs:
           ACTOR: ${{ github.actor }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          CONTENT="👀 **Pull Request Review ${REVIEW_STATE^}** in \`$REPOSITORY\` by **$ACTOR**\n\n[#$PR_NUMBER: $PR_TITLE]($PR_URL)"
+          LABEL="${REVIEW_STATE^}"
+          CONTENT=$(printf '%b' \
+            "\U0001F440 **Pull Request Review ${LABEL}** in \`${REPOSITORY}\` by **${ACTOR}**\n" \
+            "\n" \
+            "[#${PR_NUMBER}: ${PR_TITLE}](${PR_URL})")
           PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
-          curl -X POST \
+          curl -sfS -X POST \
                -H "Content-Type: application/json" \
                -d "$PAYLOAD" \
                "$DISCORD_WEBHOOK_URL"
@@ -98,9 +110,13 @@ jobs:
           ACTOR: ${{ github.actor }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          CONTENT="🐛 **Issue ${ACTION^}** in \`$REPOSITORY\` by **$ACTOR**\n\n[#$ISSUE_NUMBER: $ISSUE_TITLE]($ISSUE_URL)"
+          LABEL="${ACTION^}"
+          CONTENT=$(printf '%b' \
+            "\U0001F41B **Issue ${LABEL}** in \`${REPOSITORY}\` by **${ACTOR}**\n" \
+            "\n" \
+            "[#${ISSUE_NUMBER}: ${ISSUE_TITLE}](${ISSUE_URL})")
           PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
-          curl -X POST \
+          curl -sfS -X POST \
                -H "Content-Type: application/json" \
                -d "$PAYLOAD" \
                "$DISCORD_WEBHOOK_URL"
@@ -115,9 +131,13 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          CONTENT="🎉 **Release ${ACTION^}** in \`$REPOSITORY\`\n\n[$RELEASE_NAME ($RELEASE_TAG)]($RELEASE_URL)"
+          LABEL="${ACTION^}"
+          CONTENT=$(printf '%b' \
+            "\U0001F389 **Release ${LABEL}** in \`${REPOSITORY}\`\n" \
+            "\n" \
+            "[${RELEASE_NAME} (${RELEASE_TAG})](${RELEASE_URL})")
           PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
-          curl -X POST \
+          curl -sfS -X POST \
                -H "Content-Type: application/json" \
                -d "$PAYLOAD" \
                "$DISCORD_WEBHOOK_URL"
@@ -131,9 +151,14 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          CONTENT="✅ **Check Run Completed** in \`$REPOSITORY\`\n\nCheck: \`$CHECK_NAME\`\nStatus: $CHECK_STATUS\nResult: $CHECK_CONCLUSION"
+          CONTENT=$(printf '%b' \
+            "\u2705 **Check Run Completed** in \`${REPOSITORY}\`\n" \
+            "\n" \
+            "Check: \`${CHECK_NAME}\`\n" \
+            "Status: ${CHECK_STATUS}\n" \
+            "Result: ${CHECK_CONCLUSION}")
           PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
-          curl -X POST \
+          curl -sfS -X POST \
                -H "Content-Type: application/json" \
                -d "$PAYLOAD" \
                "$DISCORD_WEBHOOK_URL"
@@ -146,9 +171,13 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          CONTENT="📊 **Check Suite Completed** in \`$REPOSITORY\`\n\nStatus: $CHECK_STATUS\nResult: $CHECK_CONCLUSION"
+          CONTENT=$(printf '%b' \
+            "\U0001F4CA **Check Suite Completed** in \`${REPOSITORY}\`\n" \
+            "\n" \
+            "Status: ${CHECK_STATUS}\n" \
+            "Result: ${CHECK_CONCLUSION}")
           PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
-          curl -X POST \
+          curl -sfS -X POST \
                -H "Content-Type: application/json" \
                -d "$PAYLOAD" \
                "$DISCORD_WEBHOOK_URL"
@@ -156,18 +185,26 @@ jobs:
       - name: Send notification to Discord for Deployment
         if: github.event_name == 'deployment' || github.event_name == 'deployment_status'
         env:
+          EVENT_NAME: ${{ github.event_name }}
           DEPLOY_ENV: ${{ github.event.deployment.environment }}
           DEPLOY_STATUS: ${{ github.event.deployment_status.state }}
           REPOSITORY: ${{ github.repository }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          if [ "${{ github.event_name }}" == "deployment_status" ]; then
-            CONTENT="🚀 **Deployment Status: ${DEPLOY_STATUS^^}** in \`$REPOSITORY\`\n\nEnvironment: \`$DEPLOY_ENV\`"
+          if [ "$EVENT_NAME" = "deployment_status" ]; then
+            STATUS_UPPER="${DEPLOY_STATUS^^}"
+            CONTENT=$(printf '%b' \
+              "\U0001F680 **Deployment Status: ${STATUS_UPPER}** in \`${REPOSITORY}\`\n" \
+              "\n" \
+              "Environment: \`${DEPLOY_ENV}\`")
           else
-            CONTENT="🚀 **Deployment Created** in \`$REPOSITORY\`\n\nEnvironment: \`$DEPLOY_ENV\`"
+            CONTENT=$(printf '%b' \
+              "\U0001F680 **Deployment Created** in \`${REPOSITORY}\`\n" \
+              "\n" \
+              "Environment: \`${DEPLOY_ENV}\`")
           fi
           PAYLOAD=$(jq -n --arg content "$CONTENT" '{"content": $content}')
-          curl -X POST \
+          curl -sfS -X POST \
                -H "Content-Type: application/json" \
                -d "$PAYLOAD" \
                "$DISCORD_WEBHOOK_URL"
