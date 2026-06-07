@@ -528,26 +528,53 @@ class ExamScraperService:
 
     def _parse_entries_from_payload(self, clean_p: str) -> List[dict]:
         """Helper to extract entries array from a single clean payload string."""
-        start = clean_p.find('"entries":[') + 10
+        idx = clean_p.find('"entries":[')
+        if idx == -1:
+            return []
+        start = idx + 10  # Index of the first '['
+
+        # Simple state machine to find matching closing bracket while skipping string literals
+        in_string = False
+        escaped = False
         bracket_count = 0
+
         for i in range(start, len(clean_p)):
-            if clean_p[i] == '[':
-                bracket_count += 1
-            elif clean_p[i] == ']':
-                bracket_count -= 1
-                if bracket_count == 0:
-                    json_str = clean_p[start : i + 1]
-                    return json.loads(json_str)
+            char = clean_p[i]
+
+            if escaped:
+                escaped = False
+                continue
+
+            if char == '\\':
+                escaped = True
+                continue
+
+            if char == '"':
+                in_string = not in_string
+                continue
+
+            if not in_string:
+                if char == '[':
+                    bracket_count += 1
+                elif char == ']':
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        json_str = clean_p[start : i + 1]
+                        try:
+                            return json.loads(json_str)
+                        except json.JSONDecodeError:
+                            return []
         return []
 
     def _extract_nextjs_data(self, html: str) -> List[dict]:
         """Extract the entries array from Next.js self.__next_f.push payloads."""
         entries = []
-        # Find all self.__next_f.push strings
         patterns = re.findall(
-            r'self\.__next_f\.push\(\[1,"(.*?)"\]\)', html, re.DOTALL
+            r"self\.__next_f\.push\(\s*\[\s*\d+\s*,\s*(['\"])(.*?)\1\s*\]\s*\)",
+            html,
+            re.DOTALL,
         )
-        for p in patterns:
+        for _, p in patterns:
             # Next.js escapes: \" -> " and \\ -> \
             clean_p = p.replace('\\"', '"').replace('\\\\', '\\').replace('\\n', '')
 
