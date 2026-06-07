@@ -34,10 +34,6 @@ jobs:
           pyinstaller --onefile --name O-ALvL-paper-downloader_linux o_and_a_lv_qp_sdl.py
           chmod +x dist/*
 
-      - name: Set up GitHub CLI
-        run: |
-          sudo apt-get install -y gh
-
       - name: Create release
         id: create_release
         env:
