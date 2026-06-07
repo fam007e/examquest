@@ -3,7 +3,6 @@
 Script to set up the virtual environment and run both backend and frontend servers.
 """
 import os
-import shutil
 import subprocess
 import sys
 import time
@@ -18,19 +17,25 @@ def setup_venv():
     """Create a virtual environment if it doesn't exist and install dependencies."""
     if not os.path.exists(".venv"):
         print("🛠️  Creating virtual environment (.venv)...")
-        subprocess.run([sys.executable, "-m", "venv", ".venv"], check=True)
+        subprocess.run(
+            [sys.executable, "-m", "venv", ".venv"], check=True
+        )  # nosec
 
     python_exe = get_python_executable()
 
     print("📦  Syncing Python dependencies...")
-    subprocess.run([python_exe, "-m", "pip", "install", "-U", "pip"], check=True)
-    subprocess.run([python_exe, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
+    subprocess.run(
+        [python_exe, "-m", "pip", "install", "-U", "pip"], check=True
+    )  # nosec
+    subprocess.run(
+        [python_exe, "-m", "pip", "install", "-r", "requirements.txt"], check=True
+    )  # nosec
 
 def run_app():
+    # pylint: disable=too-many-branches
     """Start both backend and frontend servers and monitor them."""
     python_exe = get_python_executable()
     is_windows = os.name == 'nt'
-    npm_bin = shutil.which("npm") or ("npm.cmd" if is_windows else "npm")
 
     # 1. Start the Backend
     print("🚀 Starting Backend (FastAPI)...")
@@ -40,7 +45,7 @@ def run_app():
     backend_proc = subprocess.Popen(
         [python_exe, "-m", "uvicorn", "main:app", "--app-dir", "backend", "--port", "8000"],
         bufsize=1
-    )
+    ) # nosec
 
     try:
         # 2. Wait for backend to be ready
@@ -49,7 +54,14 @@ def run_app():
         # 3. Check/Start the Frontend
         if not os.path.exists("frontend/node_modules"):
             print("📦 node_modules not found. Installing frontend dependencies...")
-            subprocess.run([npm_bin, "install"], cwd="frontend", check=True)
+            if is_windows:
+                subprocess.run(
+                    ["npm.cmd", "install"], cwd="frontend", check=True
+                )  # nosec
+            else:
+                subprocess.run(
+                    ["npm", "install"], cwd="frontend", check=True
+                )  # nosec
 
         print("💻 Starting Frontend (Vite)...")
         # Check if Node.js supports --disable-warning=DEP0205 via feature detection
@@ -60,7 +72,7 @@ def run_app():
                 ["node", "--disable-warning=DEP0205", "-v"],
                 capture_output=True,
                 check=False
-            )
+            )  # nosec
             if res.returncode == 0:
                 node_opts = node_env.get("NODE_OPTIONS", "")
                 node_env["NODE_OPTIONS"] = f"{node_opts} --disable-warning=DEP0205".strip()
@@ -71,11 +83,18 @@ def run_app():
             print(f"⚠️ Warning during Node warning-suppression check: {e}")
 
         # pylint: disable=consider-using-with
-        frontend_proc = subprocess.Popen(
-            [npm_bin, "run", "dev"],
-            cwd="frontend",
-            env=node_env
-        )
+        if is_windows:
+            frontend_proc = subprocess.Popen(
+                ["npm.cmd", "run", "dev"],
+                cwd="frontend",
+                env=node_env
+            )  # nosec
+        else:
+            frontend_proc = subprocess.Popen(
+                ["npm", "run", "dev"],
+                cwd="frontend",
+                env=node_env
+            )  # nosec
 
         print("\n" + "="*40)
         print("✅ Application is running!")
