@@ -51,19 +51,24 @@ def run_app():
             subprocess.run(["npm", "install"], cwd="frontend", check=True, shell=is_windows)
 
         print("💻 Starting Frontend (Vite)...")
-        # Check Node version to safely disable deprecation warning DEP0205
+        # Check if Node.js supports --disable-warning=DEP0205 via feature detection
         node_env = os.environ.copy()
         try:
-            node_ver_res = subprocess.run(["node", "-v"], capture_output=True, text=True, check=True, shell=is_windows)
-            node_ver = node_ver_res.stdout.strip().lstrip('v')
-            version_parts = node_ver.split('.')
-            if version_parts and version_parts[0].isdigit():
-                major_ver = int(version_parts[0])
-                minor_ver = int(version_parts[1]) if len(version_parts) > 1 and version_parts[1].isdigit() else 0
-                if major_ver > 21 or (major_ver == 21 and minor_ver >= 3):
-                    node_env["NODE_OPTIONS"] = (node_env.get("NODE_OPTIONS", "") + " --disable-warning=DEP0205").strip()
-        except Exception: # pylint: disable=broad-exception-caught
+            # Test if Node accepts --disable-warning=DEP0205
+            res = subprocess.run(
+                ["node", "--disable-warning=DEP0205", "-v"],
+                capture_output=True,
+                check=False,
+                shell=is_windows
+            )
+            if res.returncode == 0:
+                node_opts = node_env.get("NODE_OPTIONS", "")
+                node_env["NODE_OPTIONS"] = f"{node_opts} --disable-warning=DEP0205".strip()
+        except FileNotFoundError:
+            # Node.js is not installed; handled later during Vite launch
             pass
+        except subprocess.SubprocessError as e:
+            print(f"⚠️ Warning during Node warning-suppression check: {e}")
 
         # Use shell=True for Windows to find 'npm'
         # pylint: disable=consider-using-with
