@@ -3,6 +3,7 @@
 Script to set up the virtual environment and run both backend and frontend servers.
 """
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -29,6 +30,7 @@ def run_app():
     """Start both backend and frontend servers and monitor them."""
     python_exe = get_python_executable()
     is_windows = os.name == 'nt'
+    npm_bin = shutil.which("npm") or ("npm.cmd" if is_windows else "npm")
 
     # 1. Start the Backend
     print("🚀 Starting Backend (FastAPI)...")
@@ -47,8 +49,7 @@ def run_app():
         # 3. Check/Start the Frontend
         if not os.path.exists("frontend/node_modules"):
             print("📦 node_modules not found. Installing frontend dependencies...")
-            # Use shell=True for Windows to find 'npm'
-            subprocess.run(["npm", "install"], cwd="frontend", check=True, shell=is_windows)
+            subprocess.run([npm_bin, "install"], cwd="frontend", check=True)
 
         print("💻 Starting Frontend (Vite)...")
         # Check if Node.js supports --disable-warning=DEP0205 via feature detection
@@ -58,8 +59,7 @@ def run_app():
             res = subprocess.run(
                 ["node", "--disable-warning=DEP0205", "-v"],
                 capture_output=True,
-                check=False,
-                shell=is_windows
+                check=False
             )
             if res.returncode == 0:
                 node_opts = node_env.get("NODE_OPTIONS", "")
@@ -70,12 +70,10 @@ def run_app():
         except subprocess.SubprocessError as e:
             print(f"⚠️ Warning during Node warning-suppression check: {e}")
 
-        # Use shell=True for Windows to find 'npm'
         # pylint: disable=consider-using-with
         frontend_proc = subprocess.Popen(
-            ["npm", "run", "dev"],
+            [npm_bin, "run", "dev"],
             cwd="frontend",
-            shell=is_windows,
             env=node_env
         )
 
