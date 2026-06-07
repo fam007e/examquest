@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Script to set up the virtual environment and run both backend and frontend servers.
 """

@@ -77,9 +77,9 @@ async def get_boards():
             "board": "Edexcel"
         },
         {
-            "id": "papacambridge_caie",
-            "name": "Cambridge (CAIE) - Papacambridge",
-            "source": "papacambridge",
+            "id": "pastpapers_co_caie",
+            "name": "Cambridge (CAIE) - PastPapers.co (Latest)",
+            "source": "pastpapers_co",
             "board": "CAIE"
         },
     ]
@@ -88,7 +88,7 @@ async def get_boards():
 async def get_levels(board_id: str):
     """Return available levels for a specific board."""
     if "caie" in board_id:
-        return ["IGCSE", "O Level", "AS and A Level"]
+        return ["IGCSE", "O Level", "A Level"]
     return ["International GCSE", "Advanced Level"]
 
 @app.get("/subjects")
@@ -103,6 +103,8 @@ async def get_subjects(request: Request, source: str, board: str, level: str):
     session = request.app.state.session
     if source == 'xtremepapers':
         subjects = await service.get_xtremepapers_subjects(session, board, level)
+    elif source == 'pastpapers_co':
+        subjects = await service.get_pastpapers_co_subjects(session, level)
     else:
         subjects = await service.get_papacambridge_subjects(session, level)
 

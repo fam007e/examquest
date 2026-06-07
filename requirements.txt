@@ -6,5 +6,6 @@ uvicorn>=0.35.0
 pypdf>=6.7.5
 python-multipart>=0.0.22
 aiohttp>=3.10.0
+brotli>=1.1.0
 pylint>=3.0.0
 setuptools>=80.7.1

@@ -1,5 +1,5 @@
 """
-Service for scraping exam papers from xtremepapers and papacambridge.
+Service for scraping exam papers from xtremepapers, papacambridge, and pastpapers.co.
 Updated to use asynchronous requests with politeness techniques.
 """
 import os
@@ -8,6 +8,7 @@ import asyncio
 import random
 import hashlib
 from typing import Dict, List
+from urllib.parse import urljoin, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -19,55 +20,82 @@ class ExamScraperService:
     BASE_URL = 'https://papers.xtremepape.rs/'
 
     USER_AGENTS = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) '
-        'Gecko/20100101 Firefox/121.0',
-        'Mozilla/5.0 (X11; Linux x86_64) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) '
-        'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPad; CPU OS 17_2 like Mac OS X) '
-        'AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0.6099.101 '
-        'Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (Android 14; Mobile; rv:121.0) Gecko/121.0 Firefox/121.0',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 OPR/104.0.0.0',
-        'Mozilla/5.0 (Linux; Android 10; K) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0'
     ]
 
     def __init__(self):
         # Limit concurrency to 5 requests at a time
         self.semaphore = asyncio.Semaphore(5)
 
-    def _get_headers(self) -> Dict[str, str]:
-        """Return random headers to avoid bot detection."""
-        return {
+    def _get_headers(self, url: str, referer: str = None) -> Dict[str, str]:
+        """Return realistic headers to avoid bot detection."""
+        parsed_url = urlparse(url)
+        host = parsed_url.netloc
+
+        if not referer:
+            referer = 'https://www.google.com/'
+        
+        parsed_ref = urlparse(referer)
+        
+        # Determine Sec-Fetch-Site (same-origin, same-site, cross-site, none)
+        host_parts = host.split('.')
+        ref_parts = parsed_ref.netloc.split('.')
+        
+        base_domain = '.'.join(host_parts[-2:]) if len(host_parts) >= 2 else host
+        ref_domain = '.'.join(ref_parts[-2:]) if len(ref_parts) >= 2 else parsed_ref.netloc
+
+        if host == parsed_ref.netloc:
+            fetch_site = 'same-origin'
+        elif base_domain == ref_domain:
+            fetch_site = 'same-site'
+        elif not parsed_ref.netloc:
+            fetch_site = 'none'
+        else:
+            fetch_site = 'cross-site'
+
+        headers = {
             'User-Agent': random.choice(self.USER_AGENTS),
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
-            'Referer': 'https://www.google.com/',
+            'Referer': referer,
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': fetch_site,
+            'Sec-Fetch-User': '?1',
+            'Upgrade-Insecure-Requests': '1',
         }
+        
+        # Add Sec-Ch-Ua headers for Chrome
+        ua = headers['User-Agent']
+        if 'Chrome' in ua:
+            headers.update({
+                'sec-ch-ua': '"Chromium";v="125", "Not.A/Brand";v="24", "Google Chrome";v="125"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"' if 'Windows' in ua else '"macOS"' if 'Macintosh' in ua else '"Linux"'
+            })
+
+        return headers
 
     def _get_safe_url(self, url: str) -> str:
         """Strictly validate and reconstruct the URL from trusted constants."""
+        # Use a more flexible check for papacambridge to handle varied subdomains or paths
         trusted_map = {
-            'https://papers.xtremepape.rs/': 'https://papers.xtremepape.rs/',
-            'http://papers.xtremepape.rs/': 'https://papers.xtremepape.rs/',
-            'https://pastpapers.papacambridge.com/': 'https://pastpapers.papacambridge.com/',
-            'http://pastpapers.papacambridge.com/': 'https://pastpapers.papacambridge.com/'
+            'papers.xtremepape.rs': 'https://papers.xtremepape.rs/',
+            'pastpapers.papacambridge.com': 'https://pastpapers.papacambridge.com/',
+            'papacambridge.com': 'https://papacambridge.com/',
+            'pastpapers.co': 'https://pastpapers.co/'
         }
-        for prefix, safe_base in trusted_map.items():
-            if url.startswith(prefix):
-                # Constructing the URL from a hardcoded base constant satisfies CodeQL SSRF checks
-                path_part = url[len(prefix):]
-                return safe_base + path_part
+        
+        parsed = urlparse(url)
+        if parsed.netloc in trusted_map:
+            # Reconstruct to ensure we use https and clean path
+            base = trusted_map[parsed.netloc]
+            return base.rstrip('/') + '/' + parsed.path.lstrip('/') + (f"?{parsed.query}" if parsed.query else "")
         return ""
 
     def _is_trusted_url(self, url: str) -> bool:
@@ -89,7 +117,7 @@ class ExamScraperService:
 
         return target_path
 
-    async def _fetch_html(self, session: aiohttp.ClientSession, url: str) -> str:
+    async def _fetch_html(self, session: aiohttp.ClientSession, url: str, referer: str = None) -> str:
         """Wrapper for aiohttp GET requests with semaphore and jitter."""
         safe_url = self._get_safe_url(url)
         if not safe_url:
@@ -97,15 +125,29 @@ class ExamScraperService:
             return ""
 
         async with self.semaphore:
-            # Random jitter between 0.2 and 1.0 seconds
-            await asyncio.sleep(random.uniform(0.2, 1.0))
+            # Random jitter between 0.5 and 2.0 seconds for better human-like behavior
+            await asyncio.sleep(random.uniform(0.5, 2.0))
 
             try:
-                timeout = aiohttp.ClientTimeout(total=15)
-                async with session.get(safe_url, headers=self._get_headers(),
+                # Use the URL's parent or base domain as referer if not provided
+                if not referer:
+                    referer = urljoin(url, '.')
+
+                timeout = aiohttp.ClientTimeout(total=20)
+                async with session.get(safe_url, headers=self._get_headers(safe_url, referer),
                                      timeout=timeout) as response:
                     if response.status == 200:
                         return await response.text()
+                    if response.status == 403:
+                        print(f"Access Denied (403) for {url}. Might be Cloudflare challenge.")
+                        # Try a fallback with no referer at all or different domain
+                        if referer != 'https://www.google.com/':
+                            await asyncio.sleep(1)
+                            async with session.get(safe_url, headers=self._get_headers(safe_url, 'https://www.google.com/'),
+                                                 timeout=timeout) as retry_res:
+                                if retry_res.status == 200:
+                                    return await retry_res.text()
+                    
                     print(f"Failed to fetch {url}: Status {response.status}")
                     return ""
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
@@ -130,7 +172,7 @@ class ExamScraperService:
         for link in subject_links:
             subject_name = link.text.strip('[]')
             if subject_name != '..':
-                subjects[subject_name] = self.BASE_URL + link['href']
+                subjects[subject_name] = urljoin(self.BASE_URL, link['href'])
         return subjects
 
     async def get_papacambridge_subjects(self, session: aiohttp.ClientSession,
@@ -150,14 +192,14 @@ class ExamScraperService:
         url = (
             f'https://pastpapers.papacambridge.com/papers/caie/{level_slug}'
         )
-        html = await self._fetch_html(session, url)
+        html = await self._fetch_html(session, url, 'https://papacambridge.com/past-papers/')
         if not html:
             return {}
 
         soup = BeautifulSoup(html, 'html.parser')
-        return self._parse_pc_subjects(soup)
+        return self._parse_pc_subjects(soup, url)
 
-    def _parse_pc_subjects(self, soup: BeautifulSoup) -> Dict[str, str]:
+    def _parse_pc_subjects(self, soup: BeautifulSoup, base_url: str) -> Dict[str, str]:
         """Helper to parse subjects from papacambridge soup."""
         subjects = {}
         items = soup.find_all('div', class_='kt-widget4__item item-folder-type')
@@ -173,9 +215,8 @@ class ExamScraperService:
             name = span.text.strip()
             if not name or name == '..':
                 continue
-            url = link['href']
-            if not url.startswith('http'):
-                url = 'https://pastpapers.papacambridge.com/' + url
+            
+            url = urljoin(base_url, link['href'])
             subjects[name] = url
         return subjects
 
@@ -184,6 +225,9 @@ class ExamScraperService:
         """Fetch PDF links for the selected subject."""
         if source == 'papacambridge':
             return await self._get_papacambridge_pdfs(session, subject_url)
+        
+        if source == 'pastpapers_co':
+            return await self._get_pastpapers_co_pdfs(session, subject_url)
 
         if exam_board == 'Edexcel':
             return await self._get_edexcel_pdfs(session, subject_url)
@@ -194,7 +238,7 @@ class ExamScraperService:
 
         soup = BeautifulSoup(html, 'html.parser')
         pdf_links = soup.find_all('a', class_='file', href=re.compile(r'\.pdf$'))
-        return {link.text.strip(): self.BASE_URL + link['href'] for link in pdf_links}
+        return {link.text.strip(): urljoin(self.BASE_URL, link['href']) for link in pdf_links}
 
     async def _get_edexcel_pdfs(self, session: aiohttp.ClientSession,
                                 subject_url: str) -> Dict[str, str]:
@@ -209,7 +253,7 @@ class ExamScraperService:
         tasks = []
         for year_link in year_links:
             if year_link.text.strip('[]') != '..':
-                year_url = self.BASE_URL + year_link['href']
+                year_url = urljoin(self.BASE_URL, year_link['href'])
                 tasks.append(
                     self._get_edexcel_year_details(session, year_url)
                 )
@@ -236,7 +280,7 @@ class ExamScraperService:
         for sub_dir_name in ['[Question-paper]', '[Mark-scheme]']:
             sub_link = soup.find('a', class_='directory', string=sub_dir_name)
             if sub_link:
-                sub_url = self.BASE_URL + sub_link['href']
+                sub_url = urljoin(self.BASE_URL, sub_link['href'])
                 sub_tasks.append(
                     self._get_pdfs_from_xtremepapers_page(session, sub_url)
                 )
@@ -257,7 +301,7 @@ class ExamScraperService:
 
         soup = BeautifulSoup(html, 'html.parser')
         pdf_links = soup.find_all('a', class_='file', href=re.compile(r'\.pdf$'))
-        return {link.text.strip(): self.BASE_URL + link['href'] for link in pdf_links}
+        return {link.text.strip(): urljoin(self.BASE_URL, link['href']) for link in pdf_links}
 
     async def _get_papacambridge_pdfs(self, session: aiohttp.ClientSession,
                                       subject_url: str) -> Dict[str, str]:
@@ -272,7 +316,7 @@ class ExamScraperService:
 
         if folders and not pdf_items:
             # Parallel fetch years
-            years = self._get_papacambridge_years_internal(soup)
+            years = self._get_papacambridge_years_internal(soup, subject_url)
             tasks = [
                 self._get_papacambridge_session_pdfs(session, y_url)
                 for y_url in years.values()
@@ -286,7 +330,7 @@ class ExamScraperService:
 
         return await self._get_papacambridge_session_pdfs(session, subject_url)
 
-    def _get_papacambridge_years_internal(self, soup: BeautifulSoup) -> Dict[str, str]:
+    def _get_papacambridge_years_internal(self, soup: BeautifulSoup, base_url: str) -> Dict[str, str]:
         """Internal helper to parse year links from local soup."""
         years = {}
         year_items = soup.find_all('div',
@@ -305,9 +349,8 @@ class ExamScraperService:
             is_special = 'Solved' in name or 'Topical' in name
             if is_invalid or is_special:
                 continue
-            year_url = link['href']
-            if not year_url.startswith('http'):
-                year_url = 'https://pastpapers.papacambridge.com/' + year_url
+            
+            year_url = urljoin(base_url, link['href'])
             years[name] = year_url
         return years
 
@@ -338,11 +381,11 @@ class ExamScraperService:
                     pdf_url = direct_link['href']
 
             if pdf_url:
-                if not pdf_url.startswith('http'):
-                    pdf_url = 'https://pastpapers.papacambridge.com/' + pdf_url
+                pdf_url = urljoin(session_url, pdf_url)
                 filename = os.path.basename(pdf_url)
                 pdfs[filename] = pdf_url
         return pdfs
+
 
     def categorize_pdf(self, filename: str, exam_board: str) -> str:
         """Categorize the PDF with specific paper numbers."""
@@ -382,7 +425,7 @@ class ExamScraperService:
 
         async with self.semaphore:
             timeout = aiohttp.ClientTimeout(total=60)
-            async with session.get(safe_url, headers=self._get_headers(),
+            async with session.get(safe_url, headers=self._get_headers(safe_url),
                                  timeout=timeout) as response:
                 if response.status == 200:
                     with open(path, 'wb') as f:
@@ -408,3 +451,81 @@ class ExamScraperService:
         with open(safe_output_path, 'wb') as f:
             merger.write(f)
         merger.close()
+
+    async def get_pastpapers_co_subjects(self, session: aiohttp.ClientSession,
+                                         exam_level: str) -> Dict[str, str]:
+        """Fetch subjects from pastpapers.co."""
+        level_map = {
+            'O Level': 'o-level',
+            'A Level': 'a-level',
+            'IGCSE': 'igcse'
+        }
+        level_slug = level_map.get(exam_level, 'igcse')
+        url = f'https://pastpapers.co/caie/{level_slug}'
+        
+        html = await self._fetch_html(session, url)
+        if not html:
+            return {}
+
+        entries = self._extract_nextjs_data(html)
+        subjects = {}
+        for entry in entries:
+            if entry.get('isDir'):
+                name = entry.get('name')
+                rel_path = entry.get('relPath')
+                subjects[name] = f'https://pastpapers.co/caie/{rel_path}'
+        return subjects
+
+    async def _get_pastpapers_co_pdfs(self, session: aiohttp.ClientSession,
+                                     subject_url: str) -> Dict[str, str]:
+        """Recursively fetch PDF links from pastpapers.co folders."""
+        html = await self._fetch_html(session, subject_url)
+        if not html:
+            return {}
+
+        entries = self._extract_nextjs_data(html)
+        pdfs = {}
+        tasks = []
+
+        for entry in entries:
+            name = entry.get('name')
+            rel_path = entry.get('relPath')
+            if entry.get('isDir'):
+                sub_url = f'https://pastpapers.co/caie/{rel_path}'
+                tasks.append(self._get_pastpapers_co_pdfs(session, sub_url))
+            elif name.lower().endswith('.pdf'):
+                pdfs[name] = f'https://pastpapers.co/caie/{rel_path}'
+
+        if tasks:
+            results = await asyncio.gather(*tasks)
+            for res in results:
+                pdfs.update(res)
+
+        return pdfs
+
+    def _extract_nextjs_data(self, html: str) -> List[dict]:
+        """Extract the entries array from Next.js self.__next_f.push payloads."""
+        import json
+        entries = []
+        # Find all self.__next_f.push strings
+        patterns = re.findall(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)', html, re.DOTALL)
+        for p in patterns:
+            # Next.js escapes: \" -> " and \\ -> \
+            clean_p = p.replace('\\"', '"').replace('\\\\', '\\').replace('\\n', '')
+            
+            if '"entries":[' in clean_p:
+                try:
+                    start = clean_p.find('"entries":[') + 10
+                    bracket_count = 0
+                    for i in range(start, len(clean_p)):
+                        if clean_p[i] == '[':
+                            bracket_count += 1
+                        elif clean_p[i] == ']':
+                            bracket_count -= 1
+                            if bracket_count == 0:
+                                json_str = clean_p[start:i+1]
+                                entries.extend(json.loads(json_str))
+                                break
+                except (json.JSONDecodeError, ValueError):
+                    continue
+        return entries

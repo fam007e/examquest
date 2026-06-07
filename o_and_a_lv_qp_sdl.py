@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
 """
-This script downloads exam papers and mark schemes from xtremepapers and papacambridge websites
+This script downloads exam papers and mark schemes from xtremepapers, papacambridge, and pastpapers.co websites
 for CAIE and Edexcel boards and organizes them into directories based on the
 exam board and subject.
 """
@@ -16,14 +17,14 @@ def get_exam_board():
         print("\nChoose the examination board:")
         print("1. Cambridge (CAIE) - Xtremepapers")
         print("2. Edexcel - Xtremepapers")
-        print("3. Cambridge (CAIE) - Papacambridge")
+        print("3. Cambridge (CAIE) - PastPapers.co (Latest)")
         choice = input("Enter your choice (1, 2 or 3): ").strip()
         if choice == '1':
             return ('CAIE', 'xtremepapers')
         if choice == '2':
             return ('Edexcel', 'xtremepapers')
         if choice == '3':
-            return ('CAIE', 'papacambridge')
+            return ('CAIE', 'pastpapers_co')
         print("Invalid choice. Please enter 1, 2 or 3.")
 
 def get_exam_level(exam_board):
@@ -33,9 +34,9 @@ def get_exam_level(exam_board):
         if exam_board == 'CAIE':
             print("1. IGCSE")
             print("2. O Level")
-            print("3. AS and A Level")
+            print("3. A Level")
             choice = input("Enter your choice (1, 2, or 3): ").strip()
-            level_map = {'1': 'IGCSE', '2': 'O Level', '3': 'AS and A Level'}
+            level_map = {'1': 'IGCSE', '2': 'O Level', '3': 'A Level'}
             if choice in level_map:
                 return level_map[choice]
         else:  # Edexcel
@@ -64,6 +65,8 @@ async def get_exam_info(session: aiohttp.ClientSession):
 
     if source == 'xtremepapers':
         subjects = await service.get_xtremepapers_subjects(session, exam_board, exam_level)
+    elif source == 'pastpapers_co':
+        subjects = await service.get_pastpapers_co_subjects(session, exam_level)
     else:  # papacambridge
         subjects = await service.get_papacambridge_subjects(session, exam_level)
 
