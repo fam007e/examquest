@@ -21,8 +21,8 @@ setup(
     install_requires=[
         "requests>=2.32.3",
         "beautifulsoup4>=4.13.0",
-        "aiohttp>=3.10.0",
-        "brotli>=1.1.0",
+        "aiohttp>=3.13.4",
+        "brotli>=1.2.0",
         "fastapi>=0.127.0",
         "uvicorn>=0.35.0",
         "pypdf>=6.7.5",
