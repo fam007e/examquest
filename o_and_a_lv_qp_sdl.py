@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-This script downloads exam papers and mark schemes from xtremepapers, papacambridge, and pastpapers.co websites
-for CAIE and Edexcel boards and organizes them into directories based on the
-exam board and subject.
+This script downloads exam papers and mark schemes from xtremepapers,
+papacambridge, and pastpapers.co websites for CAIE and Edexcel boards
+and organizes them into directories based on the exam board and subject.
 """
 import os
 import asyncio
