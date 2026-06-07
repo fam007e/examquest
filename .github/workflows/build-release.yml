@@ -7,6 +7,9 @@ on:
     paths:
       - o_and_a_lv_qp_sdl.py
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -31,16 +34,10 @@ jobs:
           pyinstaller --onefile --name O-ALvL-paper-downloader_linux o_and_a_lv_qp_sdl.py
           chmod +x dist/*
 
-      - name: Set up GitHub CLI
-        run: |
-          sudo apt-get install -y gh
-
-      - name: Authenticate GitHub CLI
-        run: |
-          echo "${{ secrets.XM_PAPER_TOKEN }}" | gh auth login --with-token
-
       - name: Create release
         id: create_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           version=$(date +'%Y.%m.%d')".$(git rev-list --count HEAD)"
           changelog=$(git log --oneline --pretty=format:"* %s (%h)" | head -n 20)
