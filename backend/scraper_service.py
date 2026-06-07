@@ -33,6 +33,7 @@ class ExamScraperService:
     def __init__(self):
         # Limit concurrency to 5 requests at a time
         self.semaphore = asyncio.Semaphore(5)
+        self._rand = random.SystemRandom()
 
     def _get_headers(self, url: str, referer: str = None) -> Dict[str, str]:
         """Return realistic headers to avoid bot detection."""
@@ -61,7 +62,7 @@ class ExamScraperService:
             fetch_site = 'cross-site'
 
         headers = {
-            'User-Agent': random.choice(self.USER_AGENTS),
+            'User-Agent': self._rand.choice(self.USER_AGENTS),
             'Accept': (
                 'text/html,application/xhtml+xml,application/xml;q=0.9,'
                 'image/avif,image/webp,image/apng,*/*;q=0.8,'
@@ -140,7 +141,7 @@ class ExamScraperService:
 
         async with self.semaphore:
             # Random jitter between 0.5 and 2.0 seconds for better human-like behavior
-            await asyncio.sleep(random.uniform(0.5, 2.0))
+            await asyncio.sleep(self._rand.uniform(0.5, 2.0))
 
             try:
                 # Use the URL's parent or base domain as referer if not provided
