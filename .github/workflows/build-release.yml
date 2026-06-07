@@ -9,14 +9,16 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          fetch-depth: 0  # Fetch all history for changelog and release notes generation
 
       - name: Set up Python
         uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
@@ -28,22 +30,36 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build binary
+      - name: Build binary (Windows)
+        if: matrix.os == 'windows-latest'
         run: |
           pyinstaller --onefile --name O-ALvL-paper-downloader_win.exe o_and_a_lv_qp_sdl.py
+
+      - name: Build binary (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
           pyinstaller --onefile --name O-ALvL-paper-downloader_linux o_and_a_lv_qp_sdl.py
-          chmod +x dist/*
+          chmod +x dist/O-ALvL-paper-downloader_linux
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.os }}
+          path: dist/O-ALvL-paper-downloader_*
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
 
       - name: Create release
-        id: create_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          changelog=$(git log --oneline --pretty=format:"* %s (%h)" | head -n 20)
-          echo "$changelog" > dist/changelog.txt
-
-          gh release create "${{ github.ref_name }}" dist/O-ALvL-paper-downloader_win.exe dist/O-ALvL-paper-downloader_linux dist/changelog.txt --title "Release ${{ github.ref_name }}" --generate-notes
-
-      - name: Clean up binaries
-        run: |
-          rm -f dist/O-ALvL-paper-downloader_win.exe dist/O-ALvL-paper-downloader_linux dist/changelog.txt
+          gh release create "${{ github.ref_name }}" dist/O-ALvL-paper-downloader_win.exe dist/O-ALvL-paper-downloader_linux --title "Release ${{ github.ref_name }}" --generate-notes
